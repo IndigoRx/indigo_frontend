@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,10 +12,10 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Auto redirect if user already logged in
+ 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) router.push("/components/About");
+    if (token) router.push("/components/Login");
   }, [router]);
 
   const handleSubmit = async (e: { preventDefault: () => void; }) => {
@@ -45,12 +46,9 @@ export default function LoginPage() {
       //   return;
       // }
 
-      // ✅ Save token and user details
       localStorage.setItem("token", data.token);
       localStorage.setItem("username", data.user.username);
-
-      // ✅ Redirect to dashboard
-      router.push("/components/About");
+      router.push("/components/Login");
     } catch (err) {
   if (err instanceof Error) {
     setError(err.message);
@@ -69,47 +67,49 @@ export default function LoginPage() {
         <div className="max-w-md w-full">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8">
-            <h1 className="text-2xl font-bold text-green-700">IndigoRx</h1>
+            <h1 className="text-2xl font-bold text-[#429C36]">IndigoRx</h1>
           </div>
 
-          <h2 className="text-4xl font-semibold mb-2">Welcome Back</h2>
-          <p className="text-sm text-gray-600 mb-6">Sign in to your account</p>
+          <h2 className="text-4xl font-semibold  text-black mb-2 font-akatab ">Welcome Back</h2>
+          <p className="text-sm text-gray-600 mb-6 font-akatab ">Sign in to your account</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && <div className="text-sm text-red-600">{error}</div>}
 
             <label className="block">
-              <span className="text-sm font-medium text-gray-700">Email</span>
+              <span className="text-sm font-medium text-[#9F9F9F] font-akatab ">Email</span>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-400"
+                className="mt-1 block w-full px-4 py-3  text-black placeholder-gray-500 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-400 bg-no-repeat bg-size-[20px_20px] bg-position-[left_8px_center] pl-10"
                 placeholder="Enter your Email"
+                style={{ backgroundImage: "url('/images/logo/login.png')" }}
                 required
               />
             </label>
 
             <label className="block relative">
-              <span className="text-sm font-medium text-gray-700">Password</span>
+              <span className="text-sm font-medium text-gray-700 font-akatab ">Password</span>
               <input
                 type={showPwd ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-400"
+                className="mt-1 block w-full px-4 py-3 text-black placeholder-gray-500 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-400 bg-no-repeat bg-size-[20px_20px] bg-position-[left_8px_center] pl-10"
                 placeholder="Enter your password"
+                style={{ backgroundImage: "url('/images/logo/password.png')" }}
                 required
               />
               <button
-                type="button"
-                onClick={() => setShowPwd((s) => !s)}
-                className="absolute right-3 top-9 text-sm text-gray-600"
-              >
-                {showPwd ? "Hide" : "Show"}
-              </button>
+              type="button"
+              onClick={() => setShowPwd((s) => !s)}
+              className="absolute pt-7 right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#429C36] "
+               >
+              {showPwd ? <Eye size={18} /> : <EyeOff size={18} />}
+            </button>
             </label>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-end">
               <a href="#" className="text-sm text-green-700 hover:underline">
                 Forgot password?
               </a>
@@ -118,7 +118,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full mt-2 bg-green-700 text-white py-3 rounded-lg font-semibold hover:bg-green-800 transition ${
+              className={`w-full mt-2 bg-[#278B51] text-white py-3 rounded-lg font-semibold hover:bg-green-800 transition ${
                 loading ? "opacity-70 cursor-not-allowed" : ""
               }`}
             >
@@ -136,20 +136,17 @@ export default function LoginPage() {
             </div>
           </form>
 
-          {/* Footer */}
-          <div className="mt-8 text-xs text-gray-400 text-center">
-            By logging in you agree to our Terms &amp; Privacy Policy.
-          </div>
+        
         </div>
       </div>
 
       {/* Right: Green Info Panel */}
-      <div className="hidden md:flex md:w-1/2 items-center justify-center bg-linear-to-br from-green-600 to-green-800 p-12 text-white">
+      <div className="hidden md:flex md:w-1/2 items-center justify-center bg-linear-to-r from-[#278B51] to-[#094918] p-12 text-white">
         <div className="max-w-lg text-left">
-          <h3 className="text-3xl font-bold mb-4">
+          <h3 className="text-3xl font-bold font-akatab  mb-4">
             Revolutionize Prescription with Smarter Automations
           </h3>
-          <p className="mb-6 text-lg">
+          <p className="mb-6 text-s font-akatab ">
             Manage your patients with ease and keep all their records in one
             place. Create and track prescriptions digitally to reduce errors and
             save time. Gain insights with analytics to make smarter, faster
