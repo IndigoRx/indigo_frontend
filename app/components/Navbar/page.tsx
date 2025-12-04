@@ -61,7 +61,7 @@ export default function Navbar() {
               <div className="hidden md:flex items-center space-x-3">
 
                 <WhiteButton href="/components/Login" buttonName="Login" />
-                <GreenButton href="/components/Login" buttonName="Sign up" />
+                <GreenButton href="/components/Register" buttonName="Sign up" />
 
                 
               </div>
