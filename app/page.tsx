@@ -1,21 +1,18 @@
-import Image from "next/image";
+
 import Navbar from "./components/Navbar/page";
-import { Roboto } from "next/font/google";
+
 import HomeContent from "./components/HomeContent/page";
+import Footer from "./components/SubComponents/Footer";
 
 
-const roboto = Roboto({
-  weight: ["400", "500"],
-  subsets: ["latin"],
-});
 
 export default function Home() {
   return (
     <>
       <Navbar />
       <HomeContent />
-     
-      
+      <Footer />
+
     </>
   );
 }
