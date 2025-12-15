@@ -46,8 +46,8 @@ export default function LoginPage() {
       localStorage.setItem("userId", data.user.id.toString());
       localStorage.setItem("username", data.user.username);
       
-      // Redirect to dashboard
-      router.push("/dashboard");
+      
+      router.push("/profile");
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
