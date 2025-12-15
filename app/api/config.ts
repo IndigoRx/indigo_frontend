@@ -1,5 +1,5 @@
-//export const API_BASE_URL = "https://api.indigorx.me";
-export const API_BASE_URL = "http://localhost:9090";
+export const API_BASE_URL = "https://api.indigorx.me";
+//export const API_BASE_URL = "http://localhost:9090";
 export const API_ENDPOINTS = {
   LOGIN: `${API_BASE_URL}/auth/login`,
   REGISTER: `${API_BASE_URL}/auth/register`,
