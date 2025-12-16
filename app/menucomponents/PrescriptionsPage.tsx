@@ -15,16 +15,24 @@ import {
   X,
   ChevronDown,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import QRCode from "qrcode";
 
-interface Prescription {
-  id: number;
-  patientName: string;
+interface PrescriptionMedication {
   medication: string;
   dosage: string;
   frequency: string;
   duration: string;
+}
+
+interface Prescription {
+  id: number;
+  patientName: string;
+  medications: PrescriptionMedication[];
   date: string;
   status: "Active" | "Completed" | "Pending";
+  specialInstructions?: string;
 }
 
 interface Patient {
@@ -67,6 +75,7 @@ export default function PrescriptionsPage() {
   const [frequency, setFrequency] = useState("Once daily");
   const [duration, setDuration] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
+  const [addedMedications, setAddedMedications] = useState<PrescriptionMedication[]>([]);
 
   // Mock patient data
   const patients: Patient[] = [
@@ -125,40 +134,62 @@ export default function PrescriptionsPage() {
     {
       id: 1001,
       patientName: "John Smith",
-      medication: "Lisinopril",
-      dosage: "10mg",
-      frequency: "Once daily",
-      duration: "30 days",
+      medications: [
+        {
+          medication: "Lisinopril",
+          dosage: "10mg",
+          frequency: "Once daily",
+          duration: "30 days",
+        }
+      ],
       date: "2024-12-10",
       status: "Active",
     },
     {
       id: 1002,
       patientName: "Sarah Johnson",
-      medication: "Metformin",
-      dosage: "500mg",
-      frequency: "Twice daily",
-      duration: "90 days",
+      medications: [
+        {
+          medication: "Metformin",
+          dosage: "500mg",
+          frequency: "Twice daily",
+          duration: "90 days",
+        }
+      ],
       date: "2024-12-08",
       status: "Active",
     },
     {
       id: 1003,
       patientName: "Michael Brown",
-      medication: "Albuterol Inhaler",
-      dosage: "90mcg",
-      frequency: "As needed",
-      duration: "30 days",
+      medications: [
+        {
+          medication: "Albuterol Inhaler",
+          dosage: "90mcg",
+          frequency: "As needed",
+          duration: "30 days",
+        },
+        {
+          medication: "Prednisone",
+          dosage: "10mg",
+          frequency: "Once daily",
+          duration: "7 days",
+        }
+      ],
       date: "2024-11-28",
       status: "Completed",
     },
     {
       id: 1004,
       patientName: "Emily Davis",
-      medication: "Amoxicillin",
-      dosage: "500mg",
-      frequency: "Three times daily",
-      duration: "7 days",
+      medications: [
+        {
+          medication: "Amoxicillin",
+          dosage: "500mg",
+          frequency: "Three times daily",
+          duration: "7 days",
+        }
+      ],
       date: "2024-12-12",
       status: "Pending",
     },
@@ -167,7 +198,9 @@ export default function PrescriptionsPage() {
   const filteredPrescriptions = prescriptions.filter(
     (prescription) =>
       prescription.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prescription.medication.toLowerCase().includes(searchQuery.toLowerCase())
+      prescription.medications.some(med => 
+        med.medication.toLowerCase().includes(searchQuery.toLowerCase())
+      )
   );
 
   const filteredPatients = patients.filter((patient) =>
@@ -197,6 +230,29 @@ export default function PrescriptionsPage() {
     }
   };
 
+  const handleAddMedication = () => {
+    if (selectedDrug && dosage && frequency && duration) {
+      const newMedication: PrescriptionMedication = {
+        medication: selectedDrug.name,
+        dosage,
+        frequency,
+        duration,
+      };
+      setAddedMedications([...addedMedications, newMedication]);
+      
+      // Reset medication fields
+      setDrugSearchQuery("");
+      setSelectedDrug(null);
+      setDosage("");
+      setFrequency("Once daily");
+      setDuration("");
+    }
+  };
+
+  const handleRemoveMedication = (index: number) => {
+    setAddedMedications(addedMedications.filter((_, i) => i !== index));
+  };
+
   const resetCreateModal = () => {
     setShowCreateModal(false);
     setPatientSearchQuery("");
@@ -207,6 +263,7 @@ export default function PrescriptionsPage() {
     setFrequency("Once daily");
     setDuration("");
     setSpecialInstructions("");
+    setAddedMedications([]);
   };
 
   const getStatusColor = (status: string) => {
@@ -220,6 +277,292 @@ export default function PrescriptionsPage() {
       default:
         return "bg-gray-100 text-gray-700";
     }
+  };
+
+  // Function to download prescription as PDF
+  const downloadPrescriptionPDF = async (prescription: Prescription) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
+
+    // Generate QR code for prescription ID
+    const qrCodeDataUrl = await QRCode.toDataURL(`RX-${prescription.id}`, {
+      width: 200,
+      margin: 1,
+      color: {
+        dark: '#166534',
+        light: '#FFFFFF'
+      }
+    });
+
+    // Function to add a new page with border
+    const addNewPage = () => {
+      doc.addPage();
+      // Add page border
+      doc.setDrawColor(22, 101, 52);
+      doc.setLineWidth(1);
+      doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
+    };
+
+    // Function to check if we need a new page
+    const checkPageBreak = (currentY: number, requiredSpace: number) => {
+      if (currentY + requiredSpace > pageHeight - 30) {
+        addNewPage();
+        return 30; // Return top margin for new page
+      }
+      return currentY;
+    };
+
+    // Add professional header with green accent
+    doc.setFillColor(22, 101, 52); // #166534
+    doc.rect(0, 0, pageWidth, 35, "F");
+
+    // Clinic/Doctor Name (white text on green background)
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text("IndigoRx Medical Center", pageWidth / 2, 15, { align: "center" });
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("123 Healthcare Avenue, Medical District", pageWidth / 2, 22, { align: "center" });
+    doc.text("Phone: (555) 100-2000 | Fax: (555) 100-2001", pageWidth / 2, 28, { align: "center" });
+
+    // Prescription symbol (Rx) in top right
+    doc.setFontSize(32);
+    doc.setFont("times", "italic");
+    doc.text("℞", pageWidth - 25, 25);
+
+    // Reset text color for body
+    doc.setTextColor(0, 0, 0);
+
+    // Document title
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("PRESCRIPTION", margin, 50);
+
+    // Prescription ID and Date
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Rx #${prescription.id}`, margin, 56);
+    doc.text(`Date Issued: ${new Date(prescription.date).toLocaleDateString("en-US", { 
+      year: "numeric", 
+      month: "long", 
+      day: "numeric" 
+    })}`, pageWidth - margin, 56, { align: "right" });
+
+    // Patient Information Section
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text("PATIENT INFORMATION", margin, 70);
+
+    // Patient info box
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    doc.rect(margin, 73, contentWidth, 25);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Name: ${prescription.patientName}`, margin + 5, 82);
+    
+    // Find patient details
+    const patient = patients.find(p => p.name === prescription.patientName);
+    if (patient) {
+      doc.text(`Age: ${patient.age} years`, margin + 5, 89);
+      doc.text(`Phone: ${patient.phone}`, margin + 5, 96);
+    }
+
+    // Medications Section
+    let currentY = 112;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("PRESCRIBED MEDICATIONS", margin, currentY);
+
+    currentY += 3;
+    
+    // Loop through all medications
+    prescription.medications.forEach((med, index) => {
+      const boxHeight = 40;
+      
+      // Check if we need a new page for this medication
+      currentY = checkPageBreak(currentY, boxHeight + 10);
+      
+      // Medication box with light green background
+      doc.setFillColor(240, 253, 244); // Light green
+      doc.setDrawColor(200, 200, 200);
+      doc.rect(margin, currentY, contentWidth, boxHeight, "FD");
+
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(22, 101, 52);
+      doc.text(`${index + 1}. ${med.medication}`, margin + 5, currentY + 10);
+
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+
+      // Medication details in a structured format
+      const detailsStartY = currentY + 20;
+      const lineHeight = 6;
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Dosage:", margin + 5, detailsStartY);
+      doc.setFont("helvetica", "normal");
+      doc.text(med.dosage, margin + 40, detailsStartY);
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Frequency:", margin + 5, detailsStartY + lineHeight);
+      doc.setFont("helvetica", "normal");
+      doc.text(med.frequency, margin + 40, detailsStartY + lineHeight);
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Duration:", margin + 5, detailsStartY + lineHeight * 2);
+      doc.setFont("helvetica", "normal");
+      doc.text(med.duration, margin + 40, detailsStartY + lineHeight * 2);
+
+      currentY += boxHeight + 5;
+    });
+
+    // Special Instructions Section (if provided)
+    if (prescription.specialInstructions) {
+      currentY += 5;
+      
+      // Check if we need a new page
+      currentY = checkPageBreak(currentY, 35);
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("SPECIAL INSTRUCTIONS", margin, currentY);
+      currentY += 3;
+
+      doc.setDrawColor(200, 200, 200);
+      const instructionsLines = doc.splitTextToSize(prescription.specialInstructions, contentWidth - 10);
+      const instructionsHeight = Math.max(20, instructionsLines.length * 5 + 10);
+      
+      doc.rect(margin, currentY, contentWidth, instructionsHeight);
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 0, 0);
+      doc.text(instructionsLines, margin + 5, currentY + 7);
+      currentY += instructionsHeight + 5;
+    }
+
+    // General Instructions Section
+    currentY += 5;
+    
+    // Check if we need a new page
+    currentY = checkPageBreak(currentY, 35);
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("GENERAL INSTRUCTIONS", margin, currentY);
+    currentY += 3;
+
+    doc.setDrawColor(200, 200, 200);
+    doc.rect(margin, currentY, contentWidth, 25);
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    const instructions = [
+      "• Take medication exactly as prescribed",
+      "• Do not skip doses or stop medication without consulting your doctor",
+      "• Store medication as per package instructions",
+      "• Contact your doctor if you experience any adverse effects"
+    ];
+
+    instructions.forEach((instruction, index) => {
+      doc.text(instruction, margin + 5, currentY + 7 + (index * 5));
+    });
+
+    currentY += 30;
+
+    // Check if we need a new page for signature section
+    currentY = checkPageBreak(currentY, 60);
+
+    // Status badge
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    
+    let statusColor;
+    switch (prescription.status) {
+      case "Active":
+        statusColor = [22, 101, 52]; // Green
+        break;
+      case "Pending":
+        statusColor = [234, 179, 8]; // Yellow
+        break;
+      case "Completed":
+        statusColor = [100, 100, 100]; // Gray
+        break;
+      default:
+        statusColor = [100, 100, 100];
+    }
+    
+    doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.setTextColor(255, 255, 255);
+    doc.roundedRect(margin, currentY, 30, 8, 2, 2, "F");
+    doc.text(prescription.status.toUpperCase(), margin + 15, currentY + 5, { align: "center" });
+
+    currentY += 15;
+
+    // Doctor's signature section
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("PRESCRIBING PHYSICIAN", margin, currentY);
+
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, currentY + 20, margin + 80, currentY + 20);
+    
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text("Dr. [Your Name Here]", margin, currentY + 25);
+    doc.text("Medical License #: [License Number]", margin, currentY + 30);
+    doc.text("Signature", margin, currentY + 35);
+
+    // Add QR Code (positioned on the right side of signature section)
+    const qrSize = 35;
+    const qrX = pageWidth - qrSize - margin;
+    const qrY = currentY;
+    
+    doc.addImage(qrCodeDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+    
+    // QR Code label
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text("Scan to verify", qrX + (qrSize / 2), qrY + qrSize + 5, { align: "center" });
+    doc.text(`RX-${prescription.id}`, qrX + (qrSize / 2), qrY + qrSize + 10, { align: "center" });
+
+    // Footer with disclaimer (on each page)
+    const addFooter = (pageNum: number) => {
+      doc.setPage(pageNum);
+      doc.setFontSize(7);
+      doc.setTextColor(100, 100, 100);
+      doc.setFont("helvetica", "italic");
+      const disclaimer = "This prescription is valid for 30 days from the date of issue. This is a computer-generated prescription.";
+      doc.text(disclaimer, pageWidth / 2, pageHeight - 15, { align: "center", maxWidth: contentWidth });
+    };
+
+    // Add footer to all pages
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      addFooter(i);
+    }
+
+    // Add page border to first page
+    doc.setPage(1);
+    doc.setDrawColor(22, 101, 52);
+    doc.setLineWidth(1);
+    doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
+
+    // Save the PDF
+    doc.save(`Prescription_${prescription.id}_${prescription.patientName.replace(/\s+/g, "_")}.pdf`);
   };
 
   return (
@@ -345,21 +688,39 @@ export default function PrescriptionsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <Pill size={16} className="text-gray-400" />
-                      <span className="text-gray-900">
-                        {prescription.medication}
-                      </span>
+                    <div className="flex flex-col gap-1">
+                      {prescription.medications.map((med, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <Pill size={16} className="text-gray-400" />
+                          <span className="text-gray-900">
+                            {med.medication}
+                          </span>
+                        </div>
+                      ))}
+                      {prescription.medications.length > 1 && (
+                        <span className="text-xs text-gray-500 mt-1">
+                          +{prescription.medications.length - 1} more medication{prescription.medications.length > 2 ? 's' : ''}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <p className="text-sm text-gray-900">
-                        {prescription.dosage}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {prescription.frequency} • {prescription.duration}
-                      </p>
+                    <div className="space-y-2">
+                      {prescription.medications.slice(0, 1).map((med, idx) => (
+                        <div key={idx}>
+                          <p className="text-sm text-gray-900">
+                            {med.dosage}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {med.frequency} • {med.duration}
+                          </p>
+                        </div>
+                      ))}
+                      {prescription.medications.length > 1 && (
+                        <p className="text-xs text-gray-400 italic">
+                          See details for all medications
+                        </p>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -384,7 +745,11 @@ export default function PrescriptionsPage() {
                       <button className="p-1.5 hover:bg-gray-100 rounded transition-colors text-gray-600 hover:text-[#166534]">
                         <Eye size={18} strokeWidth={2} />
                       </button>
-                      <button className="p-1.5 hover:bg-gray-100 rounded transition-colors text-gray-600 hover:text-[#166534]">
+                      <button 
+                        onClick={() => downloadPrescriptionPDF(prescription)}
+                        className="p-1.5 hover:bg-gray-100 rounded transition-colors text-gray-600 hover:text-[#166534]"
+                        title="Download Prescription PDF"
+                      >
                         <Download size={18} strokeWidth={2} />
                       </button>
                     </div>
@@ -618,6 +983,53 @@ export default function PrescriptionsPage() {
                   />
                 </div>
 
+                {/* Add Medication Button */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleAddMedication}
+                    disabled={!selectedDrug || !dosage || !frequency || !duration}
+                    className="w-full px-4 py-2.5 bg-[#166534] text-white rounded-lg font-medium hover:bg-[#14532D] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <Plus size={18} strokeWidth={2} />
+                    <span>Add Medication to Prescription</span>
+                  </button>
+                </div>
+
+                {/* Added Medications List */}
+                {addedMedications.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <Pill size={16} className="text-[#166534]" />
+                      Added Medications ({addedMedications.length})
+                    </h4>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {addedMedications.map((med, index) => (
+                        <div
+                          key={index}
+                          className="bg-white rounded p-3 border border-gray-200 flex items-center justify-between"
+                        >
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900 text-sm">
+                              {index + 1}. {med.medication}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {med.dosage} • {med.frequency} • {med.duration}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveMedication(index)}
+                            className="p-1.5 hover:bg-red-50 rounded transition-colors text-red-600 hover:text-red-700"
+                            title="Remove medication"
+                          >
+                            <X size={18} strokeWidth={2} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Special Instructions */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -641,7 +1053,7 @@ export default function PrescriptionsPage() {
                 Cancel
               </button>
               <button
-                disabled={!selectedPatient || !selectedDrug || !dosage || !duration}
+                disabled={!selectedPatient || addedMedications.length === 0}
                 className="flex-1 px-4 py-2.5 bg-[#166534] text-white rounded-lg font-medium hover:bg-[#14532D] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 Create Prescription
