@@ -6,7 +6,7 @@ export const API_ENDPOINTS = {
   
   // Auth endpoints
   LOGIN: `${API_BASE_URL}/auth/login`,
-  REGISTER: `${API_BASE_URL}/auth/register`,
+  REGISTER: `${API_BASE_URL}/auth/doctor/register`,
   VALIDATE_TOKEN: `${API_BASE_URL}/auth/validate-token`,
   DOCTOR_REGISTER: `${API_BASE_URL}/auth/doctor/register`,
   PATIENT_REGISTER: `${API_BASE_URL}/auth/patient/register`,
