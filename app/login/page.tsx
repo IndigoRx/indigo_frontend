@@ -35,19 +35,21 @@ export default function LoginPage() {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error("Invalid email or password.");
-      }
-
       const data = await res.json();
 
-      // Store token, user id, and username in localStorage
+      if (!res.ok) {
+        throw new Error(data.message || "Invalid email or password.");
+      }
+
+      // Store only the token - user info will be fetched using the token
       localStorage.setItem("token", data.token);
-      localStorage.setItem("userId", data.user.id.toString());
-      localStorage.setItem("username", data.user.username);
       
-      
-      router.push("/profile");
+      // Check if doctor profile is complete
+      if (data.user.userType === "DOCTOR" && !data.user.profileComplete) {
+        router.push("/profile");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);

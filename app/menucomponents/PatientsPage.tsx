@@ -19,16 +19,21 @@ import { API_ENDPOINTS } from "@/app/api/config";
 
 interface Patient {
   id: number;
-  numberOfVisit: number;
-  firstName: string;
-  lastName: string;
+  name: string;
   dateOfBirth: string;
   gender: string;
-  contactNumber: string;
+  phone: string;
   email: string;
   address: string;
+  bloodGroup: string;
   medicalHistory: string;
-  doctor_id: number;
+  allergies: string;
+  numberOfVisit: number;
+  age: number;
+  username: string;
+  userType: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface PaginationInfo {
@@ -39,14 +44,15 @@ interface PaginationInfo {
 }
 
 interface AddPatientForm {
-  firstName: string;
-  lastName: string;
+  name: string;
   dateOfBirth: string;
   gender: string;
-  contactNumber: string;
+  phone: string;
   email: string;
   address: string;
+  bloodGroup: string;
   medicalHistory: string;
+  allergies: string;
 }
 
 export default function PatientsPage() {
@@ -65,17 +71,18 @@ export default function PatientsPage() {
   });
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
-  const [sortField, setSortField] = useState("firstName,asc");
+  const [sortField, setSortField] = useState("name,asc");
 
   const [formData, setFormData] = useState<AddPatientForm>({
-    firstName: "",
-    lastName: "",
+    name: "",
     dateOfBirth: "",
     gender: "",
-    contactNumber: "",
+    phone: "",
     email: "",
     address: "",
+    bloodGroup: "",
     medicalHistory: "",
+    allergies: "",
   });
 
   useEffect(() => {
@@ -88,39 +95,57 @@ export default function PatientsPage() {
       setError(null);
 
       const token = localStorage.getItem("token");
-      const userId = localStorage.getItem("userId");
+      
 
-      if (!token || !userId) {
+      if (!token ) {
         setError("Authentication required. Please log in.");
         return;
       }
 
-      const response = await fetch(
-        API_ENDPOINTS.DOCTOR_PATIENTS(userId, currentPage, pageSize, sortField),
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      // Parse sortField to separate field and direction
+      const [sortBy, sortDirection] = sortField.split(',');
+
+      const requestUrl = `${API_ENDPOINTS.GET_PATIENTS}?page=${currentPage}&size=${pageSize}&sortBy=${sortBy}&sortDirection=${sortDirection}`;
+      
+      console.log("📤 GET Request to:", requestUrl);
+      console.log("📋 Parameters:", { 
+        page: currentPage, 
+        size: pageSize, 
+        sortBy, 
+        sortDirection 
+      });
+
+      const response = await fetch(requestUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("📥 Response Status:", response.status, response.statusText);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch patients: ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log("✅ Patients Response:", {
+        totalPatients: data.patients?.length,
+        totalItems: data.totalItems,
+        totalPages: data.totalPages,
+        currentPage: data.currentPage
+      });
 
-      setPatients(data.content || []);
+      setPatients(data.patients || []);
       setPagination({
-        totalElements: data.totalElements || 0,
+        totalElements: data.totalItems || 0,
         totalPages: data.totalPages || 0,
-        size: data.size || pageSize,
-        number: data.number || 0,
+        size: pageSize,
+        number: data.currentPage || 0,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch patients");
-      console.error("Error fetching patients:", err);
+      console.error("❌ Error fetching patients:", err);
     } finally {
       setLoading(false);
     }
@@ -137,20 +162,16 @@ export default function PatientsPage() {
   };
 
   const formatDateForAPI = (dateString: string) => {
-    // Convert from YYYY-MM-DD to M/D/YYYY format
-    const date = new Date(dateString);
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const year = date.getFullYear();
-    return `${month}/${day}/${year}`;
+    // Backend expects YYYY-MM-DD format directly
+    return dateString;
   };
 
   const handleAddPatient = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
-    if (!formData.firstName || !formData.dateOfBirth || !formData.gender || 
-        !formData.contactNumber || !formData.email) {
+    if (!formData.name || !formData.dateOfBirth || !formData.gender || 
+        !formData.phone || !formData.email) {
       setAddError("Please fill in all required fields");
       return;
     }
@@ -160,27 +181,26 @@ export default function PatientsPage() {
       setAddError(null);
 
       const token = localStorage.getItem("token");
-      const userId = localStorage.getItem("userId");
 
-      if (!token || !userId) {
+      if (!token) {
         setAddError("Authentication required. Please log in.");
         return;
       }
 
       const payload = {
-        firstName: formData.firstName,
-        lastName: formData.lastName || "",
+        name: formData.name,
         dateOfBirth: formatDateForAPI(formData.dateOfBirth),
         gender: formData.gender,
-        contactNumber: formData.contactNumber,
+        phone: formData.phone,
         email: formData.email,
         address: formData.address || "",
+        bloodGroup: formData.bloodGroup || "",
         medicalHistory: formData.medicalHistory || "",
-        numberOfVisit: 1,
-        doctor: {
-          id: parseInt(userId),
-        },
+        allergies: formData.allergies || "",
       };
+
+      console.log("📤 POST Request to:", API_ENDPOINTS.ADD_PATIENT);
+      console.log("📦 Payload:", JSON.stringify(payload, null, 2));
 
       const response = await fetch(API_ENDPOINTS.ADD_PATIENT, {
         method: "POST",
@@ -191,21 +211,28 @@ export default function PatientsPage() {
         body: JSON.stringify(payload),
       });
 
+      console.log("📥 Response Status:", response.status, response.statusText);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.error("❌ Error Response:", errorData);
         throw new Error(errorData.message || `Failed to add patient: ${response.statusText}`);
       }
 
+      const responseData = await response.json();
+      console.log("✅ Success Response:", responseData);
+
       // Success - reset form and close modal
       setFormData({
-        firstName: "",
-        lastName: "",
+        name: "",
         dateOfBirth: "",
         gender: "",
-        contactNumber: "",
+        phone: "",
         email: "",
         address: "",
+        bloodGroup: "",
         medicalHistory: "",
+        allergies: "",
       });
       setShowAddModal(false);
       
@@ -213,7 +240,7 @@ export default function PatientsPage() {
       fetchPatients();
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Failed to add patient");
-      console.error("Error adding patient:", err);
+      console.error("❌ Error adding patient:", err);
     } finally {
       setAddLoading(false);
     }
@@ -242,7 +269,7 @@ export default function PatientsPage() {
   };
 
   const filteredPatients = patients.filter((patient) =>
-    `${patient.firstName} ${patient.lastName}`
+    patient.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase())
   );
@@ -302,10 +329,10 @@ export default function PatientsPage() {
             onChange={(e) => setSortField(e.target.value)}
             className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534]"
           >
-            <option value="firstName,asc">First Name (A-Z)</option>
-            <option value="firstName,desc">First Name (Z-A)</option>
-            <option value="lastName,asc">Last Name (A-Z)</option>
-            <option value="lastName,desc">Last Name (Z-A)</option>
+            <option value="name,asc">Name (A-Z)</option>
+            <option value="name,desc">Name (Z-A)</option>
+            <option value="dateOfBirth,asc">Age (Oldest First)</option>
+            <option value="dateOfBirth,desc">Age (Youngest First)</option>
             <option value="numberOfVisit,desc">Most Visits</option>
             <option value="numberOfVisit,asc">Least Visits</option>
           </select>
@@ -393,8 +420,7 @@ export default function PatientsPage() {
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">
-                            {patient.firstName}{" "}
-                            {patient.lastName && patient.lastName}
+                            {patient.name}
                           </p>
                           {patient.address && (
                             <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
@@ -409,10 +435,10 @@ export default function PatientsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="space-y-1">
-                        {patient.contactNumber && (
+                        {patient.phone && (
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Phone size={14} />
-                            <span>{patient.contactNumber}</span>
+                            <span>{patient.phone}</span>
                           </div>
                         )}
                         {patient.email && (
@@ -573,31 +599,18 @@ export default function PatientsPage() {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      First Name <span className="text-red-500">*</span>
+                      Full Name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
-                      name="firstName"
-                      value={formData.firstName}
+                      name="name"
+                      value={formData.name}
                       onChange={handleInputChange}
                       required
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
-                      placeholder="Enter first name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
-                      placeholder="Enter last name"
+                      placeholder="Enter full name"
                     />
                   </div>
                   <div>
@@ -632,16 +645,16 @@ export default function PatientsPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Contact Number <span className="text-red-500">*</span>
+                      Phone Number <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="tel"
-                      name="contactNumber"
-                      value={formData.contactNumber}
+                      name="phone"
+                      value={formData.phone}
                       onChange={handleInputChange}
                       required
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
-                      placeholder="9526920286"
+                      placeholder="9876543210"
                     />
                   </div>
                   <div>
@@ -669,6 +682,40 @@ export default function PatientsPage() {
                       onChange={handleInputChange}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
                       placeholder="Enter address"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Blood Group
+                    </label>
+                    <select
+                      name="bloodGroup"
+                      value={formData.bloodGroup}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
+                    >
+                      <option value="">Select blood group</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Allergies
+                    </label>
+                    <input
+                      type="text"
+                      name="allergies"
+                      value={formData.allergies}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
+                      placeholder="Enter known allergies"
                     />
                   </div>
                   <div className="md:col-span-2">

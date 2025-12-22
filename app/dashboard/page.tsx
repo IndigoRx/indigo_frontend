@@ -22,13 +22,22 @@ import SettingsPage from "../menucomponents/SettingsPage";
 
 interface DoctorData {
   id: number;
-  firstName: string;
-  lastName: string;
+  name: string;
+  email: string;
+  username: string;
   specialization: string;
   licenseNumber: string;
   hospitalName: string;
-  contactNumber: string;
-  stripeUsername: string;
+  phone: string;
+  address: string;
+  qualifications: string;
+  profileComplete: boolean;
+  isValidated: number;
+  status: string;
+}
+
+interface DoctorProfileResponse {
+  doctor: DoctorData;
 }
 
 export default function DashboardPage() {
@@ -52,17 +61,16 @@ export default function DashboardPage() {
       setError(null);
 
       const token = localStorage.getItem("token");
-      const userId = localStorage.getItem("userId");
 
-      console.log("Fetching doctor data...", { token: !!token, userId });
+      console.log("Fetching doctor profile...", { token: !!token });
 
-      if (!token || !userId) {
-        console.log("Missing credentials, redirecting to login");
+      if (!token) {
+        console.log("Missing token, redirecting to login");
         router.push("/login");
         return;
       }
 
-      const endpoint = API_ENDPOINTS.DOCTOR_DATA(userId);
+      const endpoint = API_ENDPOINTS.DOCTOR_PROFILE_GET;
       console.log("API Endpoint:", endpoint);
 
       const controller = new AbortController();
@@ -84,8 +92,7 @@ export default function DashboardPage() {
       if (response.status === 401) {
         console.log("Unauthorized - clearing storage and redirecting");
         localStorage.removeItem("token");
-        localStorage.removeItem("userId");
-        localStorage.removeItem("username");
+      
         router.push("/login");
         return;
       }
@@ -93,26 +100,31 @@ export default function DashboardPage() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("API Error:", response.status, errorText);
-        throw new Error(`Failed to fetch doctor data: ${response.status}`);
+        throw new Error(`Failed to fetch doctor profile: ${response.status}`);
       }
 
-      const data = await response.json();
-      console.log("Doctor data received:", data);
+      const data: DoctorProfileResponse = await response.json();
+      console.log("Doctor profile received:", data);
 
-      if (!data || !data.firstName || !data.lastName) {
-        throw new Error("Invalid doctor data structure received");
+      if (!data || !data.doctor || !data.doctor.name) {
+        throw new Error("Invalid doctor profile structure received");
       }
 
-      setDoctorData(data);
+      // Store userId in localStorage if not already present
+      if (data.doctor.id) {
+        localStorage.setItem("userId", data.doctor.id.toString());
+      }
+
+      setDoctorData(data.doctor);
     } catch (error: any) {
-      console.error("Error fetching doctor data:", error);
+      console.error("Error fetching doctor profile:", error);
 
       if (error.name === "AbortError") {
         setError("Request timeout. Please check your connection.");
       } else if (error.message.includes("Failed to fetch")) {
         setError("Network error. Please check your internet connection.");
       } else {
-        setError(error.message || "Failed to load doctor data");
+        setError(error.message || "Failed to load doctor profile");
       }
 
       const token = localStorage.getItem("token");
@@ -129,6 +141,20 @@ export default function DashboardPage() {
     localStorage.removeItem("userId");
     localStorage.removeItem("username");
     router.push("/login");
+  };
+
+  // Helper function to get initials from full name
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+      return parts[0].charAt(0) + parts[parts.length - 1].charAt(0);
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  // Helper function to get first name from full name
+  const getFirstName = (name: string) => {
+    return name.trim().split(" ")[0];
   };
 
   const menuItems = [
@@ -184,7 +210,7 @@ export default function DashboardPage() {
   }
 
   // No data state
-  if (!doctorData || !doctorData.firstName || !doctorData.lastName) {
+  if (!doctorData || !doctorData.name) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-6">
         <div className="max-w-md w-full">
@@ -348,12 +374,11 @@ export default function DashboardPage() {
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/10">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white font-semibold">
-                {doctorData.firstName.charAt(0)}
-                {doctorData.lastName.charAt(0)}
+                {getInitials(doctorData.name)}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-white truncate text-sm">
-                  Dr. {doctorData.firstName} {doctorData.lastName}
+                  Dr. {doctorData.name}
                 </p>
                 <p className="text-xs text-white/70 truncate">
                   {doctorData.specialization}
@@ -386,7 +411,7 @@ export default function DashboardPage() {
                 </button>
                 <div>
                   <h2 className="text-2xl font-semibold text-gray-900">
-                    Welcome, Dr. {doctorData.firstName}
+                    Welcome, Dr. {getFirstName(doctorData.name)}
                   </h2>
                   <p className="text-sm text-gray-500 mt-0.5">
                     {new Date().toLocaleDateString("en-US", {
@@ -399,17 +424,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="relative hidden md:block">
-                  <Search
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    size={18}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search patients..."
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent w-64 text-sm"
-                  />
-                </div>
+              
                 <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative">
                   <Bell size={20} className="text-gray-700" strokeWidth={2} />
                   <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#166534] rounded-full"></div>

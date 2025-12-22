@@ -16,23 +16,33 @@ import {
 import { API_ENDPOINTS } from "@/app/api/config";
 
 interface DoctorProfile {
+    id?: number;
     name: string;
+    email?: string;
+    username?: string;
     licenseNumber: string;
     specialization: string;
     phone: string;
     address: string;
     qualifications: string;
     hospitalName: string;
+    isValidated?: number;
+    status?: string;
+    profileComplete?: boolean;
 }
 
-export default function CompleteProfilePage() {
+export default function ProfileEditPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const [fetchingData, setFetchingData] = useState(true);
     const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
     const [mounted, setMounted] = useState(false);
 
     const [profile, setProfile] = useState<DoctorProfile>({
         name: "",
+        email: "",
+        username: "",
         licenseNumber: "",
         specialization: "",
         phone: "",
@@ -43,12 +53,69 @@ export default function CompleteProfilePage() {
 
     useEffect(() => {
         setMounted(true);
-        // Check if user is authenticated and needs to complete profile
-        const token = localStorage.getItem("token");
-        if (!token) {
-            router.push("/login");
+        fetchDoctorProfile();
+    }, []);
+
+    const fetchDoctorProfile = async () => {
+        try {
+            setFetchingData(true);
+            setError("");
+
+            const token = localStorage.getItem("token");
+
+            if (!token) {
+                setError("Authentication required. Please log in again.");
+                router.push("/login");
+                return;
+            }
+
+            // Fetch doctor profile using the GET /api/doctors/profile endpoint
+            const response = await fetch(API_ENDPOINTS.DOCTOR_PROFILE_GET, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    setError("Session expired. Please log in again.");
+                    localStorage.clear();
+                    router.push("/login");
+                    return;
+                }
+                throw new Error("Failed to fetch profile data");
+            }
+
+            const data = await response.json();
+
+            // Set profile from the doctor object
+            if (data.doctor) {
+                setProfile({
+                    id: data.doctor.id,
+                    name: data.doctor.name || "",
+                    email: data.doctor.email || "",
+                    username: data.doctor.username || "",
+                    licenseNumber: data.doctor.licenseNumber || "",
+                    specialization: data.doctor.specialization || "",
+                    phone: data.doctor.phone || "",
+                    address: data.doctor.address || "",
+                    qualifications: data.doctor.qualifications || "",
+                    hospitalName: data.doctor.hospitalName || "",
+                    isValidated: data.doctor.isValidated,
+                    status: data.doctor.status,
+                    profileComplete: data.doctor.profileComplete
+                });
+            }
+
+        } catch (err) {
+            console.error("Error fetching profile:", err);
+            setError("Failed to load profile data. Please try again.");
+        } finally {
+            setFetchingData(false);
         }
-    }, [router]);
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -58,6 +125,7 @@ export default function CompleteProfilePage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+        setSuccess("");
         setLoading(true);
 
         try {
@@ -76,32 +144,77 @@ export default function CompleteProfilePage() {
                 return;
             }
 
-            // Complete doctor profile
-            const response = await fetch(API_ENDPOINTS.DOCTOR_PROFILE_COMPLETE, {
-                method: "POST",
+            // Prepare update data - only send fields that can be updated
+            const updateData = {
+                name: profile.name,
+                licenseNumber: profile.licenseNumber,
+                specialization: profile.specialization,
+                phone: profile.phone,
+                address: profile.address,
+                qualifications: profile.qualifications,
+                hospitalName: profile.hospitalName
+            };
+
+            // Use PUT /api/doctors/profile endpoint
+            const response = await fetch(API_ENDPOINTS.DOCTOR_PROFILE_UPDATE, {
+                method: "PUT",
                 headers: {
                     "Authorization": `Bearer ${token}`,
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(profile),
+                body: JSON.stringify(updateData),
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || "Failed to complete profile");
+                if (response.status === 401) {
+                    setError("Session expired. Please log in again.");
+                    localStorage.clear();
+                    router.push("/login");
+                    return;
+                }
+                throw new Error(data.message || "Failed to update profile");
             }
 
-            // Success - redirect to dashboard
-            router.push("/dashboard");
+            // Show success message
+            setSuccess("Profile updated successfully!");
+            
+            // Refresh profile data
+            if (data.doctor) {
+                setProfile(prev => ({
+                    ...prev,
+                    ...data.doctor
+                }));
+            }
+
+            // Redirect to dashboard after a short delay
+            setTimeout(() => {
+                router.push("/dashboard");
+            }, 1500);
 
         } catch (err: any) {
-            console.error("Error completing profile:", err);
-            setError(err.message || "Failed to complete profile. Please try again.");
+            console.error("Error updating profile:", err);
+            setError(err.message || "Failed to update profile. Please try again.");
         } finally {
             setLoading(false);
         }
     };
+
+    // Show loading state while fetching data
+    if (fetchingData) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center">
+                <div className="text-center">
+                    <svg className="animate-spin h-12 w-12 text-green-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p className="text-gray-600 font-akatab">Loading profile data...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 relative overflow-hidden">
@@ -116,6 +229,14 @@ export default function CompleteProfilePage() {
                 <div className="max-w-4xl mx-auto">
                     {/* Header */}
                     <div className={`mb-8 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                        <button
+                            onClick={() => router.push("/dashboard")}
+                            className="inline-flex items-center gap-2 text-gray-600 hover:text-green-700 mb-6 transition-colors group"
+                        >
+                            <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+                            <span>Back to Dashboard</span>
+                        </button>
+
                         <div className="flex items-center gap-4 mb-4">
                             <div className="relative">
                                 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -125,10 +246,24 @@ export default function CompleteProfilePage() {
                                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full animate-ping"></div>
                             </div>
                             <div>
-                                <h1 className="text-4xl font-bold text-gray-900 font-akatab">Complete Your Profile</h1>
-                                <p className="text-gray-600 font-akatab mt-1">Just a few more details to get started</p>
+                                <h1 className="text-4xl font-bold text-gray-900 font-akatab">Edit Profile</h1>
+                                <p className="text-gray-600 font-akatab mt-1">Update your professional information</p>
                             </div>
                         </div>
+
+                        {/* Validation Status Badge */}
+                        {profile.isValidated === 1 && (
+                            <div className="inline-flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-medium">
+                                <CheckCircle2 size={16} />
+                                <span>Verified Professional</span>
+                            </div>
+                        )}
+                        {profile.isValidated === 0 && (
+                            <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-800 px-4 py-2 rounded-full text-sm font-medium">
+                                <AlertCircle size={16} />
+                                <span>Verification Pending</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Main Form Card */}
@@ -138,37 +273,22 @@ export default function CompleteProfilePage() {
                             <div
                                 className="h-full bg-gradient-to-r from-[#278B51] to-[#32A05F] transition-all duration-500"
                                 style={{
-                                    width: `${(Object.values(profile).filter(val => val !== "").length / Object.keys(profile).length) * 100}%`
+                                    width: `${(Object.entries(profile).filter(([key, val]) => 
+                                        !['id', 'email', 'username', 'isValidated', 'status', 'profileComplete'].includes(key) && val !== ""
+                                    ).length / 7) * 100}%`
                                 }}
                             ></div>
                         </div>
 
                         <form onSubmit={handleSubmit} className="p-8 sm:p-10">
-                            {/* Verification Warning Banner */}
-                            <div className="mb-8 bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 p-5 rounded-lg">
-                                <div className="flex items-start gap-3">
-                                    <div className="flex-shrink-0 mt-0.5">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                            <path d="M2 17L12 22L22 17" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                            <path d="M2 12L12 17L22 12" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="text-sm font-semibold text-amber-900 mb-2 font-akatab">
-                                            ⚠️ Verification Required - Licensed Medical Professionals Only
-                                        </h3>
-                                        <p className="text-sm text-amber-800 leading-relaxed mb-3">
-                                            IndigoRx is exclusively for licensed medical doctors and healthcare professionals. All credentials will be verified through official medical licensing databases and background checks.
-                                        </p>
-                                        <p className="text-xs text-amber-700 mt-3 italic">
-                                            Note: Providing false information or impersonating a medical professional is a serious offense and may result in legal action.
-                                        </p>
-                                    </div>
+                            {/* Success/Error Messages */}
+                            {success && (
+                                <div className="mb-6 text-sm text-green-700 bg-green-50 p-4 rounded-lg border border-green-200 animate-fade-in flex items-center gap-3">
+                                    <CheckCircle2 size={20} className="flex-shrink-0" />
+                                    <span>{success}</span>
                                 </div>
-                            </div>
+                            )}
 
-                            {/* Error Message */}
                             {error && (
                                 <div className="mb-6 text-sm text-red-600 bg-red-50 p-4 rounded-lg border border-red-200 animate-shake flex items-center gap-3">
                                     <AlertCircle size={20} className="flex-shrink-0" />
@@ -202,10 +322,22 @@ export default function CompleteProfilePage() {
                                                 required
                                             />
                                         </div>
-                                        <p className="mt-1 text-xs text-gray-500">Enter your full name as it appears on your medical license</p>
                                     </div>
 
-                                    <div className="group md:col-span-2">
+                                    <div className="group">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2 font-akatab">
+                                            Email Address
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={profile.email}
+                                            className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-gray-50 cursor-not-allowed text-gray-700"
+                                            disabled
+                                        />
+                                        <p className="mt-1 text-xs text-gray-500">Email cannot be changed</p>
+                                    </div>
+
+                                    <div className="group">
                                         <label className="block text-sm font-medium text-gray-700 mb-2 font-akatab">
                                             Contact Number <span className="text-red-500">*</span>
                                         </label>
@@ -286,7 +418,7 @@ export default function CompleteProfilePage() {
                                                 <circle cx="7" cy="7" r="6" stroke="#D97706" strokeWidth="1.5" fill="none" />
                                                 <path d="M7 4V7.5M7 10H7.005" stroke="#D97706" strokeWidth="1.5" strokeLinecap="round" />
                                             </svg>
-                                            <span>This will be verified against official medical licensing databases</span>
+                                            <span>Changing this will trigger re-verification</span>
                                         </p>
                                     </div>
 
@@ -303,7 +435,6 @@ export default function CompleteProfilePage() {
                                             placeholder="MBBS, MD, etc."
                                             required
                                         />
-                                        <p className="mt-1 text-xs text-gray-500">Enter your medical degree(s) and certifications</p>
                                     </div>
                                 </div>
                             </div>
@@ -352,20 +483,6 @@ export default function CompleteProfilePage() {
                                 </div>
                             </div>
 
-                            {/* Verification Acknowledgment */}
-                            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                                <label className="flex items-start gap-3 cursor-pointer group">
-                                    <input
-                                        type="checkbox"
-                                        required
-                                        className="mt-1 w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-2 focus:ring-green-400 cursor-pointer"
-                                    />
-                                    <span className="text-sm text-gray-700 leading-relaxed">
-                                        I confirm that I am a licensed medical professional and that all information provided is accurate and truthful. I understand that my credentials will be verified and that providing false information may result in account suspension and legal consequences.
-                                    </span>
-                                </label>
-                            </div>
-
                             {/* Action Buttons */}
                             <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
                                 <button
@@ -380,14 +497,22 @@ export default function CompleteProfilePage() {
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            Completing Profile...
+                                            Saving Changes...
                                         </>
                                     ) : (
                                         <>
-                                            <CheckCircle2 size={20} />
-                                            Complete Profile
+                                            <Save size={20} />
+                                            Save Changes
                                         </>
                                     )}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => router.push("/dashboard")}
+                                    className="flex-1 sm:flex-none bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-200 transition-all duration-200"
+                                >
+                                    Cancel
                                 </button>
                             </div>
                         </form>
@@ -439,6 +564,13 @@ export default function CompleteProfilePage() {
                 }
                 .animation-delay-4000 {
                     animation-delay: 4s;
+                }
+                @keyframes fade-in {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fade-in {
+                    animation: fade-in 0.6s ease-out;
                 }
                 @keyframes shake {
                     0%, 100% { transform: translateX(0); }
