@@ -19,7 +19,7 @@ export const API_ENDPOINTS = {
   // Patient endpoints
   SEARCH_PATIENTS: (firstName: string) =>
     `${API_BASE_URL}/api/patients/search?firstName=${encodeURIComponent(firstName)}`,
-  GET_PATIENTS: `${API_BASE_URL}/api/patients`,
+  GET_PATIENTS: `${API_BASE_URL}/api/patients/doctor`,
   PATIENTS: `${API_BASE_URL}/api/patients`,
   ADD_PATIENT: `${API_BASE_URL}/api/patients`,
   PATIENT_BY_ID: (id: number) => `${API_BASE_URL}/api/patients/${id}`,
