@@ -19,10 +19,12 @@ import { API_ENDPOINTS } from "@/app/api/config";
 
 interface Patient {
   id: number;
-  name: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;  // This is what the API returns
   dateOfBirth: string;
   gender: string;
-  phone: string;
+  contactNumber: string;  // Changed from 'phone'
   email: string;
   address: string;
   bloodGroup: string;
@@ -30,10 +32,7 @@ interface Patient {
   allergies: string;
   numberOfVisit: number;
   age: number;
-  username: string;
-  userType: string;
-  createdAt: string;
-  updatedAt: string;
+  doctorId: number;
 }
 
 interface PaginationInfo {
@@ -268,11 +267,9 @@ export default function PatientsPage() {
     return age;
   };
 
-  const filteredPatients = patients.filter((patient) =>
-    patient.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  );
+const filteredPatients = patients.filter((patient) =>
+  patient.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false
+);
 
   if (loading) {
     return (
@@ -420,7 +417,7 @@ export default function PatientsPage() {
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">
-                            {patient.name}
+                            {patient.fullName}
                           </p>
                           {patient.address && (
                             <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
@@ -435,10 +432,10 @@ export default function PatientsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="space-y-1">
-                        {patient.phone && (
+                        {patient.contactNumber && (
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Phone size={14} />
-                            <span>{patient.phone}</span>
+                            <span>{patient.contactNumber}</span>
                           </div>
                         )}
                         {patient.email && (
