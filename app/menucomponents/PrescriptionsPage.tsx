@@ -17,8 +17,6 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-import jsPDF from "jspdf";
-import QRCode from "qrcode";
 import { API_ENDPOINTS } from "@/app/api/config";
 
 // Backend API types
@@ -179,6 +177,7 @@ export default function PrescriptionsPage() {
   const [patientsLoading, setPatientsLoading] = useState(false);
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
   const [creatingPrescription, setCreatingPrescription] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   
   // Pagination state
@@ -187,6 +186,61 @@ export default function PrescriptionsPage() {
   const [prescriptionPage, setPrescriptionPage] = useState(0);
   const [prescriptionTotalPages, setPrescriptionTotalPages] = useState(0);
   const [totalPrescriptions, setTotalPrescriptions] = useState(0);
+
+  // Download signed prescription PDF from backend
+  const downloadPrescriptionPDF = async (prescription: Prescription) => {
+    setDownloadingId(prescription.id);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch(API_ENDPOINTS.PRESCRIPTION_DOWNLOAD(prescription.id), {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to download prescription");
+      }
+
+      // Get the blob from response
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      
+      // Get filename from Content-Disposition header or generate one
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = `prescription_${prescription.id}_${prescription.patientName.replace(/\s+/g, "_")}.pdf`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (err: any) {
+      console.error("Error downloading prescription:", err);
+      setError(err.message || "Failed to download prescription PDF");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   // Fetch patients from API with search
   const fetchPatients = async (page = 0, search = "") => {
@@ -198,10 +252,8 @@ export default function PrescriptionsPage() {
       let url: string;
 
       if (search && search.trim() !== "") {
-        // Use search API when there's a search term
         url = `${API_ENDPOINTS.PATIENTS}/search/doctor?searchTerm=${encodeURIComponent(search)}&page=${page}&size=10`;
       } else {
-        // Use regular API when no search term
         url = `${API_ENDPOINTS.PATIENTS}/doctor?page=${page}&size=10`;
       }
 
@@ -218,7 +270,6 @@ export default function PrescriptionsPage() {
 
       const data: PatientsResponse = await response.json();
       
-      // Transform backend patients to frontend format
       const transformedPatients: Patient[] = data.patients.map((p) => ({
         id: p.id,
         name: `${p.firstName} ${p.lastName}`,
@@ -243,21 +294,18 @@ export default function PrescriptionsPage() {
     }
   };
 
-  // Handle patient search button click
   const handlePatientSearch = () => {
     setPatientPage(0);
     fetchPatients(0, patientSearchQuery);
     setShowPatientDropdown(true);
   };
 
-  // Handle patient search on Enter key
   const handlePatientSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handlePatientSearch();
     }
   };
 
-  // Fetch prescriptions from API
   const fetchPrescriptions = async (page = 0, search = "") => {
     setPrescriptionsLoading(true);
     setError(null);
@@ -283,7 +331,6 @@ export default function PrescriptionsPage() {
 
       const data: PrescriptionsResponse = await response.json();
       
-      // Transform backend prescriptions to frontend format
       const transformedPrescriptions: Prescription[] = data.data.map((p) => ({
         id: p.id,
         patientName: `${p.patient.firstName} ${p.patient.lastName}`,
@@ -314,7 +361,6 @@ export default function PrescriptionsPage() {
     }
   };
 
-  // Fetch drugs from API
   const fetchDrugs = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -333,18 +379,15 @@ export default function PrescriptionsPage() {
       setDrugs(data.data || data.drugs || []);
     } catch (err: any) {
       console.error("Error fetching drugs:", err);
-      // Use mock data if API fails
       setDrugs(mockDrugs);
     }
   };
 
-  // Initial data fetch
   useEffect(() => {
     fetchPrescriptions();
     fetchDrugs();
   }, []);
 
-  // Mock drug database (fallback)
   const mockDrugs: Drug[] = [
     { id: 1, name: "Lisinopril", genericName: "Lisinopril", category: "ACE Inhibitor", commonDosages: ["5mg", "10mg", "20mg", "40mg"] },
     { id: 2, name: "Metformin", genericName: "Metformin HCL", category: "Antidiabetic", commonDosages: ["500mg", "850mg", "1000mg"] },
@@ -371,7 +414,6 @@ export default function PrescriptionsPage() {
     setSelectedDrug(drug);
     setDrugSearchQuery(drug.name);
     setShowDrugDropdown(false);
-    // Auto-fill first common dosage if available
     if (drug.commonDosages && drug.commonDosages.length > 0) {
       setDosage(drug.commonDosages[0]);
     }
@@ -388,7 +430,6 @@ export default function PrescriptionsPage() {
       };
       setAddedMedications([...addedMedications, newMedication]);
       
-      // Reset medication fields
       setDrugSearchQuery("");
       setSelectedDrug(null);
       setDosage("");
@@ -436,11 +477,9 @@ export default function PrescriptionsPage() {
         throw new Error(errorData.error || "Failed to create prescription");
       }
 
-      // Success - refresh prescriptions list and close modal
       await fetchPrescriptions();
       resetCreateModal();
       
-      // Show success message
       alert("Prescription created successfully!");
     } catch (err: any) {
       console.error("Error creating prescription:", err);
@@ -483,189 +522,6 @@ export default function PrescriptionsPage() {
       default:
         return "bg-gray-100 text-gray-700";
     }
-  };
-
-  // Function to download prescription as PDF
-  const downloadPrescriptionPDF = async (prescription: Prescription) => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
-    const contentWidth = pageWidth - (margin * 2);
-
-    // Generate QR code for prescription ID
-    const qrCodeDataUrl = await QRCode.toDataURL(`RX-${prescription.id}`, {
-      width: 200,
-      margin: 1,
-      color: {
-        dark: '#166534',
-        light: '#FFFFFF'
-      }
-    });
-
-    // Add professional header with green accent
-    doc.setFillColor(22, 101, 52);
-    doc.rect(0, 0, pageWidth, 35, "F");
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.setFont("helvetica", "bold");
-    doc.text("IndigoRx Medical Center", pageWidth / 2, 15, { align: "center" });
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text("123 Healthcare Avenue, Medical District", pageWidth / 2, 22, { align: "center" });
-    doc.text("Phone: (555) 100-2000 | Fax: (555) 100-2001", pageWidth / 2, 28, { align: "center" });
-
-    doc.setFontSize(32);
-    doc.setFont("times", "italic");
-    doc.text("℞", pageWidth - 25, 25);
-
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text("PRESCRIPTION", margin, 50);
-
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Rx #${prescription.id}`, margin, 56);
-    doc.text(`Date Issued: ${new Date(prescription.date).toLocaleDateString("en-US", { 
-      year: "numeric", 
-      month: "long", 
-      day: "numeric" 
-    })}`, pageWidth - margin, 56, { align: "right" });
-
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text("PATIENT INFORMATION", margin, 70);
-
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.5);
-    doc.rect(margin, 73, contentWidth, 25);
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Name: ${prescription.patientName}`, margin + 5, 82);
-    
-    if (prescription.patient) {
-      const age = new Date().getFullYear() - new Date(prescription.patient.dateOfBirth).getFullYear();
-      doc.text(`Age: ${age} years`, margin + 5, 89);
-      doc.text(`Phone: ${prescription.patient.phone}`, margin + 5, 96);
-    }
-
-    let currentY = 112;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("PRESCRIBED MEDICATIONS", margin, currentY);
-
-    currentY += 3;
-    
-    prescription.medications.forEach((med, index) => {
-      const boxHeight = med.instructions ? 45 : 40;
-      
-      doc.setFillColor(240, 253, 244);
-      doc.setDrawColor(200, 200, 200);
-      doc.rect(margin, currentY, contentWidth, boxHeight, "FD");
-
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(22, 101, 52);
-      doc.text(`${index + 1}. ${med.medication}`, margin + 5, currentY + 10);
-
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-
-      const detailsStartY = currentY + 20;
-      const lineHeight = 6;
-
-      doc.setFont("helvetica", "bold");
-      doc.text("Dosage:", margin + 5, detailsStartY);
-      doc.setFont("helvetica", "normal");
-      doc.text(med.dosage, margin + 40, detailsStartY);
-
-      doc.setFont("helvetica", "bold");
-      doc.text("Frequency:", margin + 5, detailsStartY + lineHeight);
-      doc.setFont("helvetica", "normal");
-      doc.text(med.frequency, margin + 40, detailsStartY + lineHeight);
-
-      doc.setFont("helvetica", "bold");
-      doc.text("Duration:", margin + 5, detailsStartY + lineHeight * 2);
-      doc.setFont("helvetica", "normal");
-      doc.text(med.duration, margin + 40, detailsStartY + lineHeight * 2);
-
-      if (med.instructions) {
-        doc.setFont("helvetica", "bold");
-        doc.text("Instructions:", margin + 5, detailsStartY + lineHeight * 3);
-        doc.setFont("helvetica", "normal");
-        doc.text(med.instructions, margin + 40, detailsStartY + lineHeight * 3);
-      }
-
-      currentY += boxHeight + 5;
-    });
-
-    if (prescription.specialInstructions) {
-      currentY += 5;
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.text("SPECIAL INSTRUCTIONS", margin, currentY);
-      currentY += 3;
-
-      doc.setDrawColor(200, 200, 200);
-      const instructionsLines = doc.splitTextToSize(prescription.specialInstructions, contentWidth - 10);
-      const instructionsHeight = Math.max(20, instructionsLines.length * 5 + 10);
-      
-      doc.rect(margin, currentY, contentWidth, instructionsHeight);
-
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.text(instructionsLines, margin + 5, currentY + 7);
-      currentY += instructionsHeight + 5;
-    }
-
-    currentY += 15;
-
-    doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("PRESCRIBING PHYSICIAN", margin, currentY);
-
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, currentY + 20, margin + 80, currentY + 20);
-    
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    if (prescription.doctor) {
-      doc.text(`Dr. ${prescription.doctor.firstName} ${prescription.doctor.lastName}`, margin, currentY + 25);
-      doc.text(`Medical License #: ${prescription.doctor.licenseNumber}`, margin, currentY + 30);
-      doc.text(`Specialization: ${prescription.doctor.specialization}`, margin, currentY + 35);
-    }
-
-    const qrSize = 35;
-    const qrX = pageWidth - qrSize - margin;
-    const qrY = currentY;
-    
-    doc.addImage(qrCodeDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
-    
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 100, 100);
-    doc.text("Scan to verify", qrX + (qrSize / 2), qrY + qrSize + 5, { align: "center" });
-    doc.text(`RX-${prescription.id}`, qrX + (qrSize / 2), qrY + qrSize + 10, { align: "center" });
-
-    doc.setFontSize(7);
-    doc.setTextColor(100, 100, 100);
-    doc.setFont("helvetica", "italic");
-    const disclaimer = "This prescription is valid for 30 days from the date of issue.";
-    doc.text(disclaimer, pageWidth / 2, pageHeight - 15, { align: "center" });
-
-    doc.setDrawColor(22, 101, 52);
-    doc.setLineWidth(1);
-    doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
-
-    doc.save(`Prescription_${prescription.id}_${prescription.patientName.replace(/\s+/g, "_")}.pdf`);
   };
 
   return (
@@ -871,10 +727,15 @@ export default function PrescriptionsPage() {
                         <div className="flex items-center gap-2">
                           <button 
                             onClick={() => downloadPrescriptionPDF(prescription)}
-                            className="p-1.5 hover:bg-gray-100 rounded transition-colors text-gray-600 hover:text-[#166534]"
-                            title="Download Prescription PDF"
+                            disabled={downloadingId === prescription.id}
+                            className="p-1.5 hover:bg-gray-100 rounded transition-colors text-gray-600 hover:text-[#166534] disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Download Signed Prescription PDF"
                           >
-                            <Download size={18} strokeWidth={2} />
+                            {downloadingId === prescription.id ? (
+                              <Loader2 size={18} className="animate-spin" />
+                            ) : (
+                              <Download size={18} strokeWidth={2} />
+                            )}
                           </button>
                         </div>
                       </td>

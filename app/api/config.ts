@@ -1,5 +1,5 @@
-export const API_BASE_URL = "https://api.indigorx.me";
-//export const API_BASE_URL = "http://localhost:9090";
+//export const API_BASE_URL = "https://api.indigorx.me";
+export const API_BASE_URL = "http://localhost:9090";
 
 export const API_ENDPOINTS = {
   BASE_URL: API_BASE_URL,
@@ -39,6 +39,8 @@ export const API_ENDPOINTS = {
   UPDATE_PRESCRIPTION_STATUS: (id: number) => 
     `${API_BASE_URL}/api/prescriptions/${id}/status`,
   DELETE_PRESCRIPTION: (id: number) => `${API_BASE_URL}/api/prescriptions/${id}`,
+    PRESCRIPTION_DOWNLOAD: (id: number) => `${API_BASE_URL}/api/prescriptions/${id}/download`,
+
     
   // Drug endpoints
   DRUGS: `${API_BASE_URL}/api/drugs`,
