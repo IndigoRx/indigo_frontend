@@ -15,7 +15,8 @@ export const API_ENDPOINTS = {
   DOCTOR_PROFILE_GET: `${API_BASE_URL}/api/doctors/profile`,
   DOCTOR_PROFILE_UPDATE: `${API_BASE_URL}/api/doctors/profile`,
   DOCTOR_PROFILE_COMPLETE: `${API_BASE_URL}/api/doctors/profile/complete`,
-  
+  DOCTOR_DASHBOARD: `${API_BASE_URL}/api/doctor/dashboard`,
+DOCTOR_DASHBOARD_STATS: `${API_BASE_URL}/api/doctor/dashboard/stats`,
   // Patient endpoints
   SEARCH_PATIENTS: (firstName: string) =>
     `${API_BASE_URL}/api/patients/search?firstName=${encodeURIComponent(firstName)}`,
