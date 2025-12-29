@@ -76,14 +76,19 @@ export default function CompleteProfilePage() {
                 return;
             }
 
-            // Complete doctor profile
+            // Complete doctor profile - prepend +91 to phone number
+            const profileData = {
+                ...profile,
+                phone: `+91${profile.phone.replace(/\s/g, '')}`
+            };
+
             const response = await fetch(API_ENDPOINTS.DOCTOR_PROFILE_COMPLETE, {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${token}`,
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(profile),
+                body: JSON.stringify(profileData),
             });
 
             const data = await response.json();
@@ -209,17 +214,18 @@ export default function CompleteProfilePage() {
                                         <label className="block text-sm font-medium text-gray-700 mb-2 font-akatab">
                                             Contact Number <span className="text-red-500">*</span>
                                         </label>
-                                        <div className="relative">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <Phone size={18} className="text-gray-400 group-focus-within:text-green-500 transition-colors" />
+                                        <div className="flex">
+                                            <div className="flex items-center px-4 py-3 bg-gray-100 border border-r-0 border-gray-200 rounded-l-lg">
+                                                <Phone size={18} className="text-gray-500 mr-2" />
+                                                <span className="text-gray-700 font-medium">+91</span>
                                             </div>
                                             <input
                                                 type="tel"
                                                 name="phone"
                                                 value={profile.phone}
                                                 onChange={handleChange}
-                                                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-200 hover:border-gray-300 text-gray-900"
-                                                placeholder="+1 (123) 456-7890"
+                                                className="flex-1 px-4 py-3 rounded-r-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-200 hover:border-gray-300 text-gray-900"
+                                                placeholder="98765 43210"
                                                 required
                                             />
                                         </div>

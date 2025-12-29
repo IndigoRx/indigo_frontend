@@ -94,9 +94,9 @@ export default function PatientsPage() {
       setError(null);
 
       const token = localStorage.getItem("token");
-      
 
-      if (!token ) {
+
+      if (!token) {
         setError("Authentication required. Please log in.");
         return;
       }
@@ -105,13 +105,13 @@ export default function PatientsPage() {
       const [sortBy, sortDirection] = sortField.split(',');
 
       const requestUrl = `${API_ENDPOINTS.GET_PATIENTS}?page=${currentPage}&size=${pageSize}&sortBy=${sortBy}&sortDirection=${sortDirection}`;
-      
+
       console.log("📤 GET Request to:", requestUrl);
-      console.log("📋 Parameters:", { 
-        page: currentPage, 
-        size: pageSize, 
-        sortBy, 
-        sortDirection 
+      console.log("📋 Parameters:", {
+        page: currentPage,
+        size: pageSize,
+        sortBy,
+        sortDirection
       });
 
       const response = await fetch(requestUrl, {
@@ -167,10 +167,10 @@ export default function PatientsPage() {
 
   const handleAddPatient = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
-    if (!formData.name || !formData.dateOfBirth || !formData.gender || 
-        !formData.phone || !formData.email) {
+    if (!formData.name || !formData.dateOfBirth || !formData.gender ||
+      !formData.phone || !formData.email) {
       setAddError("Please fill in all required fields");
       return;
     }
@@ -234,7 +234,7 @@ export default function PatientsPage() {
         allergies: "",
       });
       setShowAddModal(false);
-      
+
       // Refresh the patient list
       fetchPatients();
     } catch (err) {
@@ -267,9 +267,9 @@ export default function PatientsPage() {
     return age;
   };
 
-const filteredPatients = patients.filter((patient) =>
-  patient.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false
-);
+  const filteredPatients = patients.filter((patient) =>
+    patient.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false
+  );
 
   if (loading) {
     return (
@@ -543,11 +543,10 @@ const filteredPatients = patients.filter((patient) =>
                         )}
                         <button
                           onClick={() => handlePageChange(page)}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                            currentPage === page
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${currentPage === page
                               ? "bg-[#166534] text-white"
                               : "border border-gray-300 text-gray-700 hover:bg-gray-50"
-                          }`}
+                            }`}
                         >
                           {page + 1}
                         </button>
@@ -606,7 +605,7 @@ const filteredPatients = patients.filter((patient) =>
                       value={formData.name}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400 bg-white"
                       placeholder="Enter full name"
                     />
                   </div>
@@ -620,7 +619,7 @@ const filteredPatients = patients.filter((patient) =>
                       value={formData.dateOfBirth}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 bg-white"
                     />
                   </div>
                   <div>
@@ -632,7 +631,7 @@ const filteredPatients = patients.filter((patient) =>
                       value={formData.gender}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 bg-white"
                     >
                       <option value="">Select gender</option>
                       <option value="Male">Male</option>
@@ -650,7 +649,7 @@ const filteredPatients = patients.filter((patient) =>
                       value={formData.phone}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400 bg-white"
                       placeholder="9876543210"
                     />
                   </div>
@@ -664,7 +663,7 @@ const filteredPatients = patients.filter((patient) =>
                       value={formData.email}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400 bg-white"
                       placeholder="email@example.com"
                     />
                   </div>
@@ -677,7 +676,7 @@ const filteredPatients = patients.filter((patient) =>
                       name="address"
                       value={formData.address}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400 bg-white"
                       placeholder="Enter address"
                     />
                   </div>
@@ -689,7 +688,7 @@ const filteredPatients = patients.filter((patient) =>
                       name="bloodGroup"
                       value={formData.bloodGroup}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 bg-white"
                     >
                       <option value="">Select blood group</option>
                       <option value="A+">A+</option>
@@ -711,7 +710,7 @@ const filteredPatients = patients.filter((patient) =>
                       name="allergies"
                       value={formData.allergies}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400 bg-white"
                       placeholder="Enter known allergies"
                     />
                   </div>
@@ -724,7 +723,7 @@ const filteredPatients = patients.filter((patient) =>
                       value={formData.medicalHistory}
                       onChange={handleInputChange}
                       rows={3}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400 bg-white"
                       placeholder="Enter medical history"
                     />
                   </div>
