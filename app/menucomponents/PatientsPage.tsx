@@ -62,6 +62,7 @@ export default function PatientsPage() {
   const [error, setError] = useState<string | null>(null);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationInfo>({
     totalElements: 0,
     totalPages: 0,
@@ -150,10 +151,40 @@ export default function PatientsPage() {
     }
   };
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
+    
+    // For phone field, only allow numeric characters
+    if (name === "phone") {
+      const numericValue = value.replace(/[^0-9]/g, "");
+      setFormData((prev) => ({
+        ...prev,
+        [name]: numericValue,
+      }));
+      return;
+    }
+    
+    // For email field, validate and show error if invalid
+    if (name === "email") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+      if (value && !validateEmail(value)) {
+        setEmailError("Please enter a valid email address");
+      } else {
+        setEmailError(null);
+      }
+      return;
+    }
+    
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -172,6 +203,18 @@ export default function PatientsPage() {
     if (!formData.name || !formData.dateOfBirth || !formData.gender ||
       !formData.phone || !formData.email) {
       setAddError("Please fill in all required fields");
+      return;
+    }
+
+    // Email validation
+    if (!validateEmail(formData.email)) {
+      setAddError("Please enter a valid email address");
+      return;
+    }
+
+    // Phone validation (must be 10 digits)
+    if (formData.phone.length !== 10) {
+      setAddError("Phone number must be 10 digits");
       return;
     }
 
@@ -233,6 +276,7 @@ export default function PatientsPage() {
         medicalHistory: "",
         allergies: "",
       });
+      setEmailError(null);
       setShowAddModal(false);
 
       // Refresh the patient list
@@ -544,8 +588,8 @@ export default function PatientsPage() {
                         <button
                           onClick={() => handlePageChange(page)}
                           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${currentPage === page
-                              ? "bg-[#166534] text-white"
-                              : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+                            ? "bg-[#166534] text-white"
+                            : "border border-gray-300 text-gray-700 hover:bg-gray-50"
                             }`}
                         >
                           {page + 1}
@@ -579,6 +623,7 @@ export default function PatientsPage() {
                 onClick={() => {
                   setShowAddModal(false);
                   setAddError(null);
+                  setEmailError(null);
                 }}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
@@ -648,10 +693,17 @@ export default function PatientsPage() {
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
+                      inputMode="numeric"
+                      maxLength={10}
                       required
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400 bg-white"
                       placeholder="9876543210"
                     />
+                    {formData.phone && formData.phone.length < 10 && (
+                      <p className="mt-1 text-xs text-amber-600">
+                        Phone number must be 10 digits ({formData.phone.length}/10)
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -663,9 +715,14 @@ export default function PatientsPage() {
                       value={formData.email}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400 bg-white"
+                      className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400 bg-white ${
+                        emailError ? "border-red-500" : "border-gray-300"
+                      }`}
                       placeholder="email@example.com"
                     />
+                    {emailError && (
+                      <p className="mt-1 text-xs text-red-500">{emailError}</p>
+                    )}
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -736,6 +793,7 @@ export default function PatientsPage() {
                   onClick={() => {
                     setShowAddModal(false);
                     setAddError(null);
+                    setEmailError(null);
                   }}
                   className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                   disabled={addLoading}
@@ -744,7 +802,7 @@ export default function PatientsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={addLoading}
+                  disabled={addLoading || !!emailError}
                   className="flex-1 px-4 py-2.5 bg-[#166534] text-white rounded-lg font-medium hover:bg-[#14532D] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {addLoading ? (

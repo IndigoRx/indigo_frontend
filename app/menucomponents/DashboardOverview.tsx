@@ -13,6 +13,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { API_ENDPOINTS } from "@/app/api/config";
+import CreatePrescriptionModal from "@/app/menucomponents/CreatePrescriptionModal";
 
 interface DashboardStats {
   totalPatients: number;
@@ -90,12 +91,32 @@ const AnimatedNumber = ({ value, duration = 1000 }: { value: number; duration?: 
   return <>{displayValue}</>;
 };
 
+// Prescription Icon SVG Component
+const PrescriptionIcon = ({ className }: { className?: string }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z" />
+    <path d="M10 12h4" />
+    <path d="M10 16h4" />
+    <path d="M9 12v4" />
+  </svg>
+);
+
 export default function DashboardOverview() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -259,6 +280,26 @@ export default function DashboardOverview() {
           from { width: 0; }
         }
         
+        @keyframes pulse-ring {
+          0% {
+            transform: scale(1);
+            opacity: 0.5;
+          }
+          100% {
+            transform: scale(1.5);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes bounce-subtle {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-4px);
+          }
+        }
+        
         .animate-fadeIn {
           animation: fadeIn 0.5s ease-out forwards;
         }
@@ -327,6 +368,19 @@ export default function DashboardOverview() {
         
         .btn-hover:hover::after {
           transform: translateX(100%);
+        }
+        
+        .fab-pulse::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 9999px;
+          background: inherit;
+          animation: pulse-ring 2s ease-out infinite;
+        }
+        
+        .fab-hover:hover {
+          animation: bounce-subtle 0.6s ease-in-out;
         }
       `}</style>
 
@@ -585,6 +639,40 @@ export default function DashboardOverview() {
             )}
           </div>
         </div>
+
+        {/* Floating Action Button */}
+        <button
+          className="fixed bottom-6 right-6 z-50 group"
+          onClick={() => setShowPrescriptionModal(true)}
+        >
+          {/* Pulse ring effect */}
+          <span className="absolute inset-0 rounded-full bg-[#166534] fab-pulse"></span>
+          
+          {/* Main button */}
+          <div className="relative flex items-center gap-2 px-5 py-4 bg-gradient-to-r from-[#166534] to-[#15803d] text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 fab-hover">
+            {/* Prescription SVG Icon */}
+            <PrescriptionIcon className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
+            
+            {/* Text */}
+            <span className="font-semibold text-sm tracking-wide">Rx +</span>
+          </div>
+          
+          {/* Tooltip on hover */}
+          <span className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap pointer-events-none">
+            New Prescription
+            <span className="absolute top-full right-4 border-4 border-transparent border-t-gray-900"></span>
+          </span>
+        </button>
+
+        {/* Create Prescription Modal */}
+        <CreatePrescriptionModal
+          isOpen={showPrescriptionModal}
+          onClose={() => setShowPrescriptionModal(false)}
+          onSuccess={() => {
+            setShowPrescriptionModal(false);
+            fetchDashboardData(true);
+          }}
+        />
       </div>
     </>
   );

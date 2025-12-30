@@ -398,41 +398,7 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <div className="lg:ml-64">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <Menu size={24} className="text-gray-700" />
-                </button>
-                <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">
-                    Welcome, Dr. {getFirstName(doctorData.name)}
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    {new Date().toLocaleDateString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-              
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative">
-                  <Bell size={20} className="text-gray-700" strokeWidth={2} />
-                  <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#166534] rounded-full"></div>
-                </button>
-              </div>
-            </div>
-          </div>
-        </header>
+      
 
         {/* Dashboard Content */}
         <main className="p-6 bg-gray-50 min-h-screen">
