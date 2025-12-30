@@ -16,7 +16,8 @@ export const API_ENDPOINTS = {
   DOCTOR_PROFILE_UPDATE: `${API_BASE_URL}/api/doctors/profile`,
   DOCTOR_PROFILE_COMPLETE: `${API_BASE_URL}/api/doctors/profile/complete`,
   DOCTOR_DASHBOARD: `${API_BASE_URL}/api/doctor/dashboard`,
-DOCTOR_DASHBOARD_STATS: `${API_BASE_URL}/api/doctor/dashboard/stats`,
+  DOCTOR_DASHBOARD_STATS: `${API_BASE_URL}/api/doctor/dashboard/stats`,
+  
   // Patient endpoints
   SEARCH_PATIENTS: (firstName: string) =>
     `${API_BASE_URL}/api/patients/search?firstName=${encodeURIComponent(firstName)}`,
@@ -24,6 +25,14 @@ DOCTOR_DASHBOARD_STATS: `${API_BASE_URL}/api/doctor/dashboard/stats`,
   PATIENTS: `${API_BASE_URL}/api/patients`,
   ADD_PATIENT: `${API_BASE_URL}/api/patients`,
   PATIENT_BY_ID: (id: number) => `${API_BASE_URL}/api/patients/${id}`,
+  
+  // Patient Report endpoints
+  PATIENT_REPORT: (patientId: number) => 
+    `${API_BASE_URL}/api/patient-reports/${patientId}`,
+  PATIENT_REPORT_PDF: (patientId: number) => 
+    `${API_BASE_URL}/api/patient-reports/${patientId}/pdf`,
+  PATIENT_REPORT_PDF_VIEW: (patientId: number) => 
+    `${API_BASE_URL}/api/patient-reports/${patientId}/pdf/view`,
   
   // Prescription endpoints
   PRESCRIPTIONS: `${API_BASE_URL}/api/prescriptions`,
@@ -40,7 +49,7 @@ DOCTOR_DASHBOARD_STATS: `${API_BASE_URL}/api/doctor/dashboard/stats`,
   UPDATE_PRESCRIPTION_STATUS: (id: number) => 
     `${API_BASE_URL}/api/prescriptions/${id}/status`,
   DELETE_PRESCRIPTION: (id: number) => `${API_BASE_URL}/api/prescriptions/${id}`,
-    PRESCRIPTION_DOWNLOAD: (id: number) => `${API_BASE_URL}/api/prescriptions/${id}/download`,
+  PRESCRIPTION_DOWNLOAD: (id: number) => `${API_BASE_URL}/api/prescriptions/${id}/download`,
 
     
   // Drug endpoints

@@ -398,7 +398,45 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <div className="lg:ml-64">
-      
+        {/* Mobile Header with Hamburger Menu */}
+        <header className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Open menu"
+            >
+              <Menu size={24} strokeWidth={2} />
+            </button>
+            <div className="flex items-center gap-2">
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 32 32"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  width="32"
+                  height="32"
+                  rx="6"
+                  fill="#166534"
+                />
+                <path
+                  d="M10 16L14.5 20.5L22 11"
+                  stroke="white"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <h1 className="text-lg font-semibold text-gray-900">IndigoRx</h1>
+            </div>
+            <div className="w-10 h-10 bg-[#166534] rounded-full flex items-center justify-center text-white text-sm font-semibold">
+              {getInitials(doctorData.name)}
+            </div>
+          </div>
+        </header>
 
         {/* Dashboard Content */}
         <main className="p-6 bg-gray-50 min-h-screen">
