@@ -2,23 +2,20 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Mail, Lock, CheckCircle2 } from "lucide-react";
+import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { API_ENDPOINTS } from "@/app/api/config";
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const token = localStorage.getItem("token");
-    if (token) router.push("/dashboard");
-  }, [router]);
+  }, []);
 
   const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
@@ -26,36 +23,20 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(API_ENDPOINTS.LOGIN, {
+      const res = await fetch(API_ENDPOINTS.FORGOT_PASSWORD, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: email,
-          password: password,
-        }),
+        body: JSON.stringify({ email }),
       });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.message || "Invalid email or password.");
-      }
+      // Always show success to prevent email enumeration
+      setSuccess(true);
 
-      // Store only the token - user info will be fetched using the token
-      localStorage.setItem("token", data.token);
-      
-      // Check if doctor profile is complete
-      if (data.user.userType === "DOCTOR" && !data.user.profileComplete) {
-        router.push("/profile");
-      } else {
-        router.push("/dashboard");
-      }
     } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Login failed. Please try again.");
-      }
+      // Still show success for security
+      setSuccess(true);
     } finally {
       setLoading(false);
     }
@@ -70,10 +51,19 @@ export default function LoginPage() {
         <div className="absolute -bottom-8 left-20 w-64 h-64 bg-teal-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
       </div>
 
-      {/* Left: Login Form */}
+      {/* Left: Form */}
       <div className="w-full md:w-1/2 flex items-center justify-center p-8 bg-white relative z-10">
         <div className={`max-w-md w-full transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          {/* Logo with animation */}
+          {/* Back button */}
+          <button
+            onClick={() => router.push("/login")}
+            className="flex items-center gap-2 text-gray-600 hover:text-green-600 transition-colors mb-8 animate-fade-in"
+          >
+            <ArrowLeft size={20} />
+            <span className="text-sm font-medium">Back to login</span>
+          </button>
+
+          {/* Logo */}
           <div className="flex items-center gap-3 mb-8 animate-fade-in">
             <div className="relative">
               <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -85,107 +75,118 @@ export default function LoginPage() {
             <h1 className="text-2xl font-bold text-[#429C36]">IndigoRx</h1>
           </div>
 
-          <div className="mb-8 animate-fade-in-delay-1">
-            <h2 className="text-4xl font-semibold text-black mb-2 font-akatab">
-              Welcome Back
-            </h2>
-            <p className="text-sm text-gray-600 font-akatab flex items-center gap-2">
-              <span className="inline-block w-8 h-0.5 bg-green-500 animate-expand"></span>
-              Sign in to your account
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in-delay-2">
-            {error && (
-              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200 animate-shake flex items-center gap-2">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="8" cy="8" r="8" fill="#DC2626"/>
-                  <path d="M8 4V8M8 11H8.01" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-                {error}
+          {!success ? (
+            <>
+              <div className="mb-8 animate-fade-in-delay-1">
+                <h2 className="text-4xl font-semibold text-black mb-2 font-akatab">
+                  Forgot Password?
+                </h2>
+                <p className="text-sm text-gray-600 font-akatab flex items-center gap-2">
+                  <span className="inline-block w-8 h-0.5 bg-green-500 animate-expand"></span>
+                  No worries, we'll send you reset instructions
+                </p>
               </div>
-            )}
 
-            <label className="block group">
-              <span className="text-sm font-medium text-gray-700 font-akatab">Email</span>
-              <div className="relative mt-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail size={18} className="text-gray-400 group-focus-within:text-green-500 transition-colors" />
-                </div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-3 text-black placeholder-gray-400 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-200 hover:border-gray-300"
-                  placeholder="Enter your email"
-                  required
-                />
-              </div>
-            </label>
+              <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in-delay-2">
+                {error && (
+                  <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200 animate-shake flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="8" cy="8" r="8" fill="#DC2626"/>
+                      <path d="M8 4V8M8 11H8.01" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                    {error}
+                  </div>
+                )}
 
-            <label className="block group">
-              <span className="text-sm font-medium text-gray-700 font-akatab">Password</span>
-              <div className="relative mt-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock size={18} className="text-gray-400 group-focus-within:text-green-500 transition-colors" />
-                </div>
-                <input
-                  type={showPwd ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-12 py-3 text-black placeholder-gray-400 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-200 hover:border-gray-300"
-                  placeholder="Enter your password"
-                  required
-                />
+                <label className="block group">
+                  <span className="text-sm font-medium text-gray-700 font-akatab">Email Address</span>
+                  <div className="relative mt-1">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Mail size={18} className="text-gray-400 group-focus-within:text-green-500 transition-colors" />
+                    </div>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="block w-full pl-10 pr-4 py-3 text-black placeholder-gray-400 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-200 hover:border-gray-300"
+                      placeholder="Enter your email"
+                      required
+                    />
+                  </div>
+                </label>
+
                 <button
-                  type="button"
-                  onClick={() => setShowPwd((s) => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-green-600 transition-colors"
+                  type="submit"
+                  disabled={loading}
+                  className={`w-full mt-2 bg-gradient-to-r from-[#278B51] to-[#32A05F] text-white py-3 rounded-lg font-semibold hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 ${
+                    loading ? "opacity-70 cursor-not-allowed" : ""
+                  }`}
                 >
-                  {showPwd ? <Eye size={18} /> : <EyeOff size={18} />}
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Sending reset link...
+                    </span>
+                  ) : (
+                    "Send Reset Link"
+                  )}
                 </button>
+
+                <div className="text-center text-sm text-gray-600">
+                  Remember your password?{" "}
+                  <a
+                    href="/login"
+                    className="text-green-700 font-medium hover:text-green-800 hover:underline transition-colors"
+                  >
+                    Sign in
+                  </a>
+                </div>
+              </form>
+            </>
+          ) : (
+            /* Success State */
+            <div className="animate-fade-in text-center">
+              <div className="flex justify-center mb-6">
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center animate-scale-in">
+                  <CheckCircle2 size={40} className="text-green-600" />
+                </div>
               </div>
-            </label>
 
-            <div className="flex items-center justify-end">
-              <a 
-                href="/forgot-password" 
-                className="text-sm text-green-700 hover:text-green-800 hover:underline transition-colors"
+              <h2 className="text-3xl font-semibold text-black mb-3 font-akatab">
+                Check Your Email
+              </h2>
+              <p className="text-gray-600 mb-6">
+                We've sent a password reset link to<br />
+                <span className="font-medium text-gray-800">{email}</span>
+              </p>
+
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-green-700">
+                  The link will expire in <strong>1 hour</strong>. If you don't see the email, check your spam folder.
+                </p>
+              </div>
+
+              <button
+                onClick={() => router.push("/login")}
+                className="w-full bg-gradient-to-r from-[#278B51] to-[#32A05F] text-white py-3 rounded-lg font-semibold hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
               >
-                Forgot password?
-              </a>
-            </div>
+                Back to Login
+              </button>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full mt-2 bg-gradient-to-r from-[#278B51] to-[#32A05F] text-white py-3 rounded-lg font-semibold hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 ${
-                loading ? "opacity-70 cursor-not-allowed" : ""
-              }`}
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Signing in...
-                </span>
-              ) : (
-                "Sign in"
-              )}
-            </button>
-
-            <div className="text-center text-sm text-gray-600">
-              Don't have an account?{" "}
-              <a
-                href="/register"
-                className="text-green-700 font-medium hover:text-green-800 hover:underline transition-colors"
+              <button
+                onClick={() => {
+                  setSuccess(false);
+                  setEmail("");
+                }}
+                className="w-full mt-3 text-gray-600 hover:text-green-600 text-sm font-medium transition-colors"
               >
-                Sign up
-              </a>
+                Didn't receive email? Try again
+              </button>
             </div>
-          </form>
+          )}
 
           {/* Trust indicators */}
           <div className="mt-8 pt-6 border-t border-gray-100 animate-fade-in-delay-3">
@@ -236,27 +237,29 @@ export default function LoginPage() {
           <div className="mb-6">
             <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-4">
               <rect width="60" height="60" rx="12" fill="white" fillOpacity="0.1"/>
-              <path d="M30 15V30M30 30V45M30 30H45M30 30H15" stroke="white" strokeWidth="3" strokeLinecap="round"/>
-              <circle cx="30" cy="30" r="5" fill="white"/>
+              <path d="M20 25V22C20 17.5817 23.5817 14 28 14H32C36.4183 14 40 17.5817 40 22V25" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+              <rect x="15" y="25" width="30" height="22" rx="3" stroke="white" strokeWidth="3"/>
+              <circle cx="30" cy="36" r="3" fill="white"/>
+              <path d="M30 39V43" stroke="white" strokeWidth="3" strokeLinecap="round"/>
             </svg>
           </div>
 
           <h3 className="text-4xl font-bold font-akatab mb-4 leading-tight">
-            Revolutionize Prescription with Smarter Automations
+            Secure Password Recovery
           </h3>
           <p className="mb-8 text-base font-akatab leading-relaxed text-green-50">
-            Manage your patients with ease and keep all their records in one
-            place. Create and track prescriptions digitally to reduce errors and
-            save time. Gain insights with analytics to make smarter, faster
-            healthcare decisions.
+            We take your security seriously. Our password reset process uses 
+            encrypted tokens and expires after one hour to ensure your account 
+            remains protected at all times.
           </p>
 
-          {/* Feature list */}
+          {/* Security features */}
           <div className="space-y-4">
             {[
-              "Patient Management System",
-              "Digital Prescription Tracking",
-              "Advanced Analytics Dashboard"
+              "Encrypted reset links",
+              "One-time use tokens",
+              "1-hour expiration",
+              "Email verification required"
             ].map((feature, index) => (
               <div 
                 key={index} 
@@ -323,6 +326,13 @@ export default function LoginPage() {
         }
         .animate-slide-in-right {
           animation: slide-in-right 0.5s ease-out both;
+        }
+        @keyframes scale-in {
+          from { opacity: 0; transform: scale(0.8); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .animate-scale-in {
+          animation: scale-in 0.4s ease-out;
         }
       `}</style>
     </div>

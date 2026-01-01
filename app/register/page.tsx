@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Mail, Lock, CheckCircle2, User } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, CheckCircle2, X, RefreshCw } from "lucide-react";
 import { API_ENDPOINTS } from "@/app/api/config";
 
 export default function RegisterPage() {
@@ -17,6 +17,16 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+
+  // OTP Modal State
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otpError, setOtpError] = useState("");
+  const [otpSuccess, setOtpSuccess] = useState("");
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [resendingOtp, setResendingOtp] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -38,6 +48,21 @@ export default function RegisterPage() {
     setPasswordStrength(strength);
   }, [password]);
 
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  // Focus first OTP input when modal opens
+  useEffect(() => {
+    if (showOtpModal && otpInputRefs.current[0]) {
+      otpInputRefs.current[0].focus();
+    }
+  }, [showOtpModal]);
+
   const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
     setError("");
@@ -49,15 +74,35 @@ export default function RegisterPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      setError("Password must contain at least one uppercase letter.");
+      return;
+    }
+
+    if (!/[a-z]/.test(password)) {
+      setError("Password must contain at least one lowercase letter.");
+      return;
+    }
+
+    if (!/[0-9]/.test(password)) {
+      setError("Password must contain at least one number.");
+      return;
+    }
+
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      setError("Password must contain at least one special character.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const res = await fetch(API_ENDPOINTS.REGISTER, {
+      const res = await fetch(API_ENDPOINTS.DOCTOR_REGISTER, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -66,18 +111,24 @@ export default function RegisterPage() {
         }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Registration failed. Please try again.");
+        throw new Error(data.message || "Registration failed. Please try again.");
       }
 
-      const data = await res.json();
-      setSuccess("Account created successfully! Redirecting to login...");
-      
-      // Redirect to login after 2 seconds
-      setTimeout(() => {
-        router.push("/login");
-      }, 2000);
+      if (data.requiresVerification) {
+        // Show OTP modal
+        setShowOtpModal(true);
+        setResendCooldown(60); // 60 seconds cooldown
+        setOtp(["", "", "", "", "", ""]);
+        setOtpError("");
+        setOtpSuccess(data.message || "Verification code sent to your email");
+      } else {
+        // Direct registration success (shouldn't happen with new flow)
+        setSuccess("Account created successfully! Redirecting to login...");
+        setTimeout(() => router.push("/login"), 2000);
+      }
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -87,6 +138,131 @@ export default function RegisterPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    // Only allow numbers
+    if (value && !/^\d$/.test(value)) return;
+
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+    setOtpError("");
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (pastedData.length === 6) {
+      const newOtp = pastedData.split("");
+      setOtp(newOtp);
+      otpInputRefs.current[5]?.focus();
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const otpCode = otp.join("");
+    
+    if (otpCode.length !== 6) {
+      setOtpError("Please enter the complete 6-digit code.");
+      return;
+    }
+
+    setVerifyingOtp(true);
+    setOtpError("");
+    setOtpSuccess("");
+
+    try {
+      const res = await fetch(API_ENDPOINTS.DOCTOR_VERIFY_EMAIL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email,
+          otp: otpCode,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Verification failed. Please try again.");
+      }
+
+    
+
+      setOtpSuccess("Email verified successfully! Redirecting...");
+      
+      setTimeout(() => {
+        setShowOtpModal(false);
+        router.push("/login");
+      }, 1500);
+
+    } catch (err) {
+      if (err instanceof Error) {
+        setOtpError(err.message);
+      } else {
+        setOtpError("Verification failed. Please try again.");
+      }
+      // Clear OTP on error
+      setOtp(["", "", "", "", "", ""]);
+      otpInputRefs.current[0]?.focus();
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+
+    setResendingOtp(true);
+    setOtpError("");
+    setOtpSuccess("");
+
+    try {
+      const res = await fetch(API_ENDPOINTS.DOCTOR_RESEND_OTP, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to resend code. Please try again.");
+      }
+
+      setOtpSuccess(data.message || "New verification code sent!");
+      setResendCooldown(60);
+      setOtp(["", "", "", "", "", ""]);
+      otpInputRefs.current[0]?.focus();
+
+    } catch (err) {
+      if (err instanceof Error) {
+        setOtpError(err.message);
+      } else {
+        setOtpError("Failed to resend code. Please try again.");
+      }
+    } finally {
+      setResendingOtp(false);
+    }
+  };
+
+  const closeOtpModal = () => {
+    setShowOtpModal(false);
+    setOtp(["", "", "", "", "", ""]);
+    setOtpError("");
+    setOtpSuccess("");
   };
 
   const getStrengthColor = () => {
@@ -209,6 +385,17 @@ export default function RegisterPage() {
                     </div>
                     <span className="text-xs text-gray-600 font-medium">{getStrengthText()}</span>
                   </div>
+                  <div className="text-xs text-gray-500 space-y-1">
+                    <p className={password.length >= 8 ? "text-green-600" : ""}>
+                      {password.length >= 8 ? "✓" : "○"} At least 8 characters
+                    </p>
+                    <p className={/[A-Z]/.test(password) && /[a-z]/.test(password) ? "text-green-600" : ""}>
+                      {/[A-Z]/.test(password) && /[a-z]/.test(password) ? "✓" : "○"} Upper & lowercase letters
+                    </p>
+                    <p className={/[0-9]/.test(password) && /[!@#$%^&*(),.?":{}|<>]/.test(password) ? "text-green-600" : ""}>
+                      {/[0-9]/.test(password) && /[!@#$%^&*(),.?":{}|<>]/.test(password) ? "✓" : "○"} Number & special character
+                    </p>
+                  </div>
                 </div>
               )}
             </label>
@@ -287,7 +474,7 @@ export default function RegisterPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Creating account...
+                  Sending verification code...
                 </span>
               ) : (
                 "Create Account"
@@ -407,6 +594,140 @@ export default function RegisterPage() {
         </div>
       </div>
 
+      {/* OTP Verification Modal */}
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+            onClick={closeOtpModal}
+          ></div>
+          
+          {/* Modal */}
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 animate-scale-in">
+            {/* Close button */}
+            <button
+              onClick={closeOtpModal}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={24} />
+            </button>
+
+            {/* Icon */}
+            <div className="flex justify-center mb-6">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <Mail size={32} className="text-green-600" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-2xl font-bold text-center text-gray-800 mb-2">
+              Verify Your Email
+            </h3>
+            <p className="text-center text-gray-600 mb-6">
+              We've sent a 6-digit code to<br />
+              <span className="font-medium text-gray-800">{email}</span>
+            </p>
+
+            {/* Error/Success Messages */}
+            {otpError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 flex items-center gap-2 animate-shake">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="8" r="8" fill="#DC2626"/>
+                  <path d="M8 4V8M8 11H8.01" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                {otpError}
+              </div>
+            )}
+
+            {otpSuccess && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-600 flex items-center gap-2">
+                <CheckCircle2 size={16} />
+                {otpSuccess}
+              </div>
+            )}
+
+            {/* OTP Input */}
+            <div className="flex justify-center gap-2 mb-6">
+              {otp.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => { otpInputRefs.current[index] = el; }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(index, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                  onPaste={index === 0 ? handleOtpPaste : undefined}
+                  className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none transition-all"
+                />
+              ))}
+            </div>
+
+            {/* Verify Button */}
+            <button
+              onClick={handleVerifyOtp}
+              disabled={verifyingOtp || otp.join("").length !== 6}
+              className={`w-full py-3 rounded-lg font-semibold text-white transition-all duration-200 ${
+                verifyingOtp || otp.join("").length !== 6
+                  ? "bg-gray-300 cursor-not-allowed"
+                  : "bg-gradient-to-r from-[#278B51] to-[#32A05F] hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+              }`}
+            >
+              {verifyingOtp ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  Verifying...
+                </span>
+              ) : (
+                "Verify Email"
+              )}
+            </button>
+
+            {/* Resend OTP */}
+            <div className="mt-4 text-center">
+              <p className="text-sm text-gray-600">
+                Didn't receive the code?{" "}
+                {resendCooldown > 0 ? (
+                  <span className="text-gray-400">
+                    Resend in {resendCooldown}s
+                  </span>
+                ) : (
+                  <button
+                    onClick={handleResendOtp}
+                    disabled={resendingOtp}
+                    className="text-green-600 font-medium hover:text-green-700 hover:underline transition-colors inline-flex items-center gap-1"
+                  >
+                    {resendingOtp ? (
+                      <>
+                        <RefreshCw size={14} className="animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      "Resend Code"
+                    )}
+                  </button>
+                )}
+              </p>
+            </div>
+
+            {/* Change Email */}
+            <div className="mt-4 text-center">
+              <button
+                onClick={closeOtpModal}
+                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                Use a different email
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
         @keyframes blob {
           0%, 100% { transform: translate(0px, 0px) scale(1); }
@@ -459,6 +780,13 @@ export default function RegisterPage() {
         }
         .animate-slide-in-right {
           animation: slide-in-right 0.5s ease-out both;
+        }
+        @keyframes scale-in {
+          from { opacity: 0; transform: scale(0.9); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .animate-scale-in {
+          animation: scale-in 0.3s ease-out;
         }
       `}</style>
     </div>

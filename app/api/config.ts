@@ -1,5 +1,5 @@
-//export const API_BASE_URL = "https://api.indigorx.me";
-export const API_BASE_URL = "http://localhost:9090";
+export const API_BASE_URL = "https://api.indigorx.me";
+//export const API_BASE_URL = "http://localhost:9090";
 
 export const API_ENDPOINTS = {
   BASE_URL: API_BASE_URL,
@@ -9,7 +9,14 @@ export const API_ENDPOINTS = {
   REGISTER: `${API_BASE_URL}/auth/doctor/register`,
   VALIDATE_TOKEN: `${API_BASE_URL}/auth/validate-token`,
   DOCTOR_REGISTER: `${API_BASE_URL}/auth/doctor/register`,
+  DOCTOR_VERIFY_EMAIL: `${API_BASE_URL}/auth/doctor/verify-email`,
+  DOCTOR_RESEND_OTP: `${API_BASE_URL}/auth/doctor/resend-otp`,
   PATIENT_REGISTER: `${API_BASE_URL}/auth/patient/register`,
+  
+  // Password Reset endpoints
+  FORGOT_PASSWORD: `${API_BASE_URL}/auth/forgot-password`,
+  RESET_PASSWORD_VALIDATE: `${API_BASE_URL}/auth/reset-password/validate`,
+  RESET_PASSWORD: `${API_BASE_URL}/auth/reset-password`,
   
   // Doctor profile endpoints
   DOCTOR_PROFILE_GET: `${API_BASE_URL}/api/doctors/profile`,
