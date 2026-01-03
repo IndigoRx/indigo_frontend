@@ -1,5 +1,5 @@
-export const API_BASE_URL = "https://api.indigorx.me";
-//export const API_BASE_URL = "http://localhost:9090";
+//export const API_BASE_URL = "https://api.indigorx.me";
+export const API_BASE_URL = "http://localhost:9090";
 
 export const API_ENDPOINTS = {
   BASE_URL: API_BASE_URL,
@@ -58,7 +58,16 @@ export const API_ENDPOINTS = {
   DELETE_PRESCRIPTION: (id: number) => `${API_BASE_URL}/api/prescriptions/${id}`,
   PRESCRIPTION_DOWNLOAD: (id: number) => `${API_BASE_URL}/api/prescriptions/${id}/download`,
 
-    
+     SUBSCRIPTION_STATUS: `${API_BASE_URL}/api/subscription/status`,
+  SUBSCRIPTION_DETAILS: `${API_BASE_URL}/api/subscription/details`,
+  SUBSCRIPTION_CHECK_ACCESS: `${API_BASE_URL}/api/subscription/check-access`,
+  SUBSCRIPTION_CHECKOUT: `${API_BASE_URL}/api/subscription/checkout`,
+  SUBSCRIPTION_BILLING_PORTAL: `${API_BASE_URL}/api/subscription/billing-portal`,
+  SUBSCRIPTION_CANCEL: `${API_BASE_URL}/api/subscription/cancel`,
+  SUBSCRIPTION_PRICING: `${API_BASE_URL}/api/subscription/pricing`,
+   SUBSCRIPTION: '/api/subscription',
+  SUBSCRIPTION_CHECKOUT_SUCCESS: (sessionId: string) => 
+    `${API_BASE_URL}/api/subscription/checkout-success?session_id=${sessionId}`,
   // Drug endpoints
   DRUGS: `${API_BASE_URL}/api/drugs`,
   DRUG_BY_ID: (id: number) => `${API_BASE_URL}/api/drugs/${id}`,

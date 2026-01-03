@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Search,
   Plus,
@@ -123,6 +123,60 @@ export default function CreatePrescriptionModal({
   // Quick Add Patient Modal state
   const [showAddPatientModal, setShowAddPatientModal] = useState(false);
 
+  // Subscription expired modal state
+  const [showSubscriptionExpired, setShowSubscriptionExpired] = useState(false);
+
+  // Flag to prevent double execution
+  const [isAddingMedication, setIsAddingMedication] = useState(false);
+
+  // Refs for click outside detection
+  const drugDropdownRef = useRef<HTMLDivElement>(null);
+  const patientDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Click outside handler for drug dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        drugDropdownRef.current &&
+        !drugDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowDrugDropdown(false);
+      }
+    };
+
+    if (showDrugDropdown) {
+      setTimeout(() => {
+        document.addEventListener("mousedown", handleClickOutside);
+      }, 0);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showDrugDropdown]);
+
+  // Click outside handler for patient dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        patientDropdownRef.current &&
+        !patientDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowPatientDropdown(false);
+      }
+    };
+
+    if (showPatientDropdown) {
+      setTimeout(() => {
+        document.addEventListener("mousedown", handleClickOutside);
+      }, 0);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showPatientDropdown]);
+
   // Initialize with preselected patient
   useEffect(() => {
     if (isOpen && preselectedPatient) {
@@ -229,34 +283,52 @@ export default function CreatePrescriptionModal({
     setHasSearched(false);
   };
 
-  const handleDrugSelect = (drug: Drug) => {
+  const handleDrugSelect = (drug: Drug, isExplicitClick: boolean = false) => {
+    if (!isExplicitClick) {
+      return;
+    }
+    
+    if (selectedDrug) {
+      return;
+    }
+    
+    setShowDrugDropdown(false);
     setSelectedDrug(drug);
     setDrugSearchQuery(drug.name);
-    setShowDrugDropdown(false);
     if (drug.commonDosages && drug.commonDosages.length > 0) {
       setDosage(drug.commonDosages[0]);
     }
   };
 
   const handleAddMedication = () => {
-    if (selectedDrug && dosage && frequency && duration) {
-      const newMedication: PrescriptionMedicationDTO = {
-        drugId: selectedDrug.id,
-        dosage,
-        frequency,
-        duration,
-        instructions: instructions || undefined,
-      };
-      setAddedMedications([...addedMedications, newMedication]);
-
-      // Reset medication fields
-      setDrugSearchQuery("");
-      setSelectedDrug(null);
-      setDosage("");
-      setFrequency("Once daily");
-      setDuration("");
-      setInstructions("");
+    if (isAddingMedication) {
+      return;
     }
+    
+    if (!selectedDrug || !dosage || !frequency || !duration) return;
+
+    setIsAddingMedication(true);
+
+    const newMedication: PrescriptionMedicationDTO = {
+      drugId: selectedDrug.id,
+      dosage,
+      frequency,
+      duration,
+      instructions: instructions || undefined,
+    };
+
+    setAddedMedications((prev) => [...prev, newMedication]);
+    setShowDrugDropdown(false);
+    setSelectedDrug(null);
+    setDrugSearchQuery("");
+    setDosage("");
+    setFrequency("Once daily");
+    setDuration("");
+    setInstructions("");
+    
+    setTimeout(() => {
+      setIsAddingMedication(false);
+    }, 300);
   };
 
   const handleRemoveMedication = (index: number) => {
@@ -292,12 +364,21 @@ export default function CreatePrescriptionModal({
         body: JSON.stringify(prescriptionData),
       });
 
+      // Handle subscription expired
+      if (response.status === 402) {
+        const errorData = await response.json();
+        if (errorData.requiresSubscription) {
+          setShowSubscriptionExpired(true);
+          setCreatingPrescription(false);
+          return;
+        }
+      }
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to create prescription");
       }
 
-      // Reset and close
       resetModal();
       onSuccess?.();
     } catch (err: any) {
@@ -310,7 +391,6 @@ export default function CreatePrescriptionModal({
 
   const handleAddPatientSuccess = () => {
     setShowAddPatientModal(false);
-    // Re-run the search to include the newly added patient
     if (patientSearchQuery.trim()) {
       fetchPatients(0, patientSearchQuery);
     }
@@ -333,8 +413,18 @@ export default function CreatePrescriptionModal({
     setShowPatientDropdown(false);
     setShowDrugDropdown(false);
     setHasSearched(false);
+    setIsAddingMedication(false);
+    setShowSubscriptionExpired(false);
     onClose();
   };
+
+  const filteredDrugs = drugs.filter(
+    (drug) =>
+      drugSearchQuery.trim() !== "" &&
+      (drug.name.toLowerCase().includes(drugSearchQuery.toLowerCase()) ||
+        drug.genericName.toLowerCase().includes(drugSearchQuery.toLowerCase()) ||
+        drug.category.toLowerCase().includes(drugSearchQuery.toLowerCase()))
+  );
 
   if (!isOpen) return null;
 
@@ -375,7 +465,7 @@ export default function CreatePrescriptionModal({
                 </div>
 
                 {/* Patient Search */}
-                <div>
+                <div ref={patientDropdownRef}>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Search Existing Patient
                   </label>
@@ -424,7 +514,12 @@ export default function CreatePrescriptionModal({
                       {patients.map((patient) => (
                         <button
                           key={patient.id}
-                          onClick={() => handlePatientSelect(patient)}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handlePatientSelect(patient);
+                          }}
                           className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
                         >
                           <div className="flex items-center justify-between">
@@ -451,6 +546,7 @@ export default function CreatePrescriptionModal({
                           No patients found for "{patientSearchQuery}"
                         </p>
                         <button
+                          type="button"
                           onClick={() => setShowAddPatientModal(true)}
                           className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#166534] text-white rounded-lg font-medium hover:bg-[#14532D] transition-colors"
                         >
@@ -480,6 +576,7 @@ export default function CreatePrescriptionModal({
                         </div>
                         {!preselectedPatient && (
                           <button
+                            type="button"
                             onClick={() => {
                               setSelectedPatient(null);
                               setPatientSearchQuery("");
@@ -505,6 +602,7 @@ export default function CreatePrescriptionModal({
                       <div className="flex-1 h-px bg-gray-300"></div>
                     </div>
                     <button
+                      type="button"
                       onClick={() => setShowAddPatientModal(true)}
                       className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 text-gray-600 rounded-lg font-medium hover:border-[#166534] hover:text-[#166534] hover:bg-green-50 transition-colors"
                     >
@@ -534,7 +632,7 @@ export default function CreatePrescriptionModal({
                 <h4 className="text-lg font-semibold text-gray-900 mb-4">Add Medications</h4>
 
                 {/* Drug Search */}
-                <div>
+                <div ref={drugDropdownRef}>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Search Medication *
                   </label>
@@ -547,33 +645,42 @@ export default function CreatePrescriptionModal({
                       type="text"
                       value={drugSearchQuery}
                       onChange={(e) => {
-                        setDrugSearchQuery(e.target.value);
-                        setShowDrugDropdown(true);
-                        if (!e.target.value) {
+                        const value = e.target.value;
+                        setDrugSearchQuery(value);
+
+                        if (value.trim() && !selectedDrug) {
+                          setShowDrugDropdown(true);
+                        } else {
+                          setShowDrugDropdown(false);
+                        }
+
+                        if (!value) {
                           setSelectedDrug(null);
                         }
                       }}
-                      onFocus={() => setShowDrugDropdown(true)}
+                      onFocus={() => {
+                        if (drugSearchQuery.trim() && !selectedDrug) {
+                          setShowDrugDropdown(true);
+                        }
+                      }}
                       className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400"
                       placeholder="Type to search medications..."
                     />
-                    {showDrugDropdown && drugs.filter(
-                      (drug) =>
-                        drug.name.toLowerCase().includes(drugSearchQuery.toLowerCase()) ||
-                        drug.genericName.toLowerCase().includes(drugSearchQuery.toLowerCase()) ||
-                        drug.category.toLowerCase().includes(drugSearchQuery.toLowerCase())
-                    ).length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {drugs.filter(
-                          (drug) =>
-                            drug.name.toLowerCase().includes(drugSearchQuery.toLowerCase()) ||
-                            drug.genericName.toLowerCase().includes(drugSearchQuery.toLowerCase()) ||
-                            drug.category.toLowerCase().includes(drugSearchQuery.toLowerCase())
-                        ).map((drug) => (
-                          <button
+
+                    {/* Drug Dropdown */}
+                    {showDrugDropdown && !selectedDrug && filteredDrugs.length > 0 && (
+                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {filteredDrugs.map((drug) => (
+                          <div
                             key={drug.id}
-                            onClick={() => handleDrugSelect(drug)}
-                            className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                            role="button"
+                            tabIndex={-1}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleDrugSelect(drug, true);
+                            }}
+                            className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 cursor-pointer"
                           >
                             <div className="flex items-center justify-between">
                               <div>
@@ -584,11 +691,34 @@ export default function CreatePrescriptionModal({
                                 {drug.category}
                               </span>
                             </div>
-                          </button>
+                          </div>
                         ))}
                       </div>
                     )}
                   </div>
+
+                  {/* Selected Drug Display */}
+                  {selectedDrug && (
+                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-blue-900">
+                          Selected: {selectedDrug.name}
+                        </p>
+                        <p className="text-xs text-blue-700">{selectedDrug.genericName} • {selectedDrug.category}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedDrug(null);
+                          setDrugSearchQuery("");
+                          setDosage("");
+                        }}
+                        className="p-1 hover:bg-blue-100 rounded transition-colors text-blue-700"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Dosage and Frequency */}
@@ -603,6 +733,7 @@ export default function CreatePrescriptionModal({
                         onChange={(e) => setDosage(e.target.value)}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900"
                       >
+                        <option value="">Select dosage</option>
                         {selectedDrug.commonDosages.map((d) => (
                           <option key={d} value={d}>
                             {d}
@@ -714,6 +845,7 @@ export default function CreatePrescriptionModal({
                             )}
                           </div>
                           <button
+                            type="button"
                             onClick={() => handleRemoveMedication(index)}
                             className="p-1.5 hover:bg-red-50 rounded transition-colors text-red-600 hover:text-red-700"
                             title="Remove medication"
@@ -746,6 +878,7 @@ export default function CreatePrescriptionModal({
           {/* Footer */}
           <div className="p-6 border-t border-gray-200 flex gap-3 sticky bottom-0 bg-white">
             <button
+              type="button"
               onClick={resetModal}
               disabled={creatingPrescription}
               className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -753,6 +886,7 @@ export default function CreatePrescriptionModal({
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleCreatePrescription}
               disabled={!selectedPatient || addedMedications.length === 0 || creatingPrescription}
               className="flex-1 px-4 py-2.5 bg-[#166534] text-white rounded-lg font-medium hover:bg-[#14532D] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -779,9 +913,39 @@ export default function CreatePrescriptionModal({
         onClose={() => setShowAddPatientModal(false)}
         onSuccess={handleAddPatientSuccess}
       />
+
+      {/* Subscription Expired Modal */}
+      {showSubscriptionExpired && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 text-center">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle size={32} className="text-amber-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Subscription Required
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Your free trial has expired. Please subscribe to continue creating prescriptions.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSubscriptionExpired(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              >
+                Later
+              </button>
+              <button
+                onClick={() => (window.location.href = "/subscription")}
+                className="flex-1 px-4 py-2.5 bg-[#166534] text-white rounded-lg font-medium hover:bg-[#14532D] transition-colors"
+              >
+                Subscribe Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
-// Export types for use in other components
 export type { Patient, Drug, PrescriptionMedicationDTO, CreatePrescriptionDTO };
