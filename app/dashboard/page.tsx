@@ -89,7 +89,7 @@ export default function DashboardPage() {
 
       console.log("Response status:", response.status);
 
-      if (response.status === 401) {
+      if (response.status === 403) {
         console.log("Unauthorized - clearing storage and redirecting");
         localStorage.removeItem("token");
       
