@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   Search,
   Plus,
@@ -129,9 +130,18 @@ export default function CreatePrescriptionModal({
   // Flag to prevent double execution
   const [isAddingMedication, setIsAddingMedication] = useState(false);
 
+  // Portal mount state
+  const [mounted, setMounted] = useState(false);
+
   // Refs for click outside detection
   const drugDropdownRef = useRef<HTMLDivElement>(null);
   const patientDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Set mounted state for portal
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   // Click outside handler for drug dropdown
   useEffect(() => {
@@ -426,11 +436,12 @@ export default function CreatePrescriptionModal({
         drug.category.toLowerCase().includes(drugSearchQuery.toLowerCase()))
   );
 
-  if (!isOpen) return null;
+  // Don't render if not open or not mounted (for SSR compatibility)
+  if (!isOpen || !mounted) return null;
 
-  return (
+  const modalContent = (
     <>
-      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
         <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
           {/* Header */}
           <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
@@ -916,7 +927,7 @@ export default function CreatePrescriptionModal({
 
       {/* Subscription Expired Modal */}
       {showSubscriptionExpired && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
           <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 text-center">
             <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle size={32} className="text-amber-600" />
@@ -946,6 +957,9 @@ export default function CreatePrescriptionModal({
       )}
     </>
   );
+
+  // Use createPortal to render the modal at document.body level
+  return createPortal(modalContent, document.body);
 }
 
 export type { Patient, Drug, PrescriptionMedicationDTO, CreatePrescriptionDTO };

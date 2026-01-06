@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { API_ENDPOINTS } from "@/app/api/config";
 
@@ -30,6 +31,7 @@ export default function AddPatientModal({
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const [formData, setFormData] = useState<AddPatientForm>({
     name: "",
@@ -42,6 +44,12 @@ export default function AddPatientModal({
     medicalHistory: "",
     allergies: "",
   });
+
+  // Set mounted state for portal
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -114,15 +122,14 @@ export default function AddPatientModal({
       !formData.name ||
       !formData.dateOfBirth ||
       !formData.gender ||
-      !formData.phone ||
-      !formData.email
+      !formData.phone
     ) {
       setAddError("Please fill in all required fields");
       return;
     }
 
-    // Email validation
-    if (!validateEmail(formData.email)) {
+    // Email validation (only if email is provided)
+    if (formData.email && !validateEmail(formData.email)) {
       setAddError("Please enter a valid email address");
       return;
     }
@@ -192,10 +199,11 @@ export default function AddPatientModal({
     }
   };
 
-  if (!isOpen) return null;
+  // Don't render if not open or not mounted (for SSR compatibility)
+  if (!isOpen || !mounted) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  const modalContent = (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[10001] p-4">
       <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-xl font-semibold text-gray-900">
@@ -285,18 +293,17 @@ export default function AddPatientModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email <span className="text-red-500">*</span>
+                  Email
                 </label>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  required
                   className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400 bg-white ${
                     emailError ? "border-red-500" : "border-gray-300"
                   }`}
-                  placeholder="email@example.com"
+                  placeholder="email@example.com (optional)"
                 />
                 {emailError && (
                   <p className="mt-1 text-xs text-red-500">{emailError}</p>
@@ -393,4 +400,7 @@ export default function AddPatientModal({
       </div>
     </div>
   );
+
+  // Use createPortal to render the modal at document.body level
+  return createPortal(modalContent, document.body);
 }

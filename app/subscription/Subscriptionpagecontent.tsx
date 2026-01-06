@@ -122,7 +122,7 @@ const Subscriptionpagecontent: React.FC = () => {
 
   const handleSubscribe = async (plan: PlanType) => {
     if (plan === 'enterprise') {
-      window.location.href = 'mailto:sales@indigorx.com?subject=Enterprise Plan Inquiry';
+      window.location.href = 'mailto:info@indigorx.me?subject=Enterprise Plan Inquiry';
       return;
     }
     
