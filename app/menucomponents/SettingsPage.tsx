@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { User, Lock, Crown, CreditCard, Save } from "lucide-react";
+import { User, Lock, Crown, Headphones, Save } from "lucide-react";
 import ProfileSection from "./Profilesection";
 import SecuritySection from "./Securitysection";
 import SubscriptionSection from "./Subscriptionsection";
-import PaymentSection from "./Paymentsection";
+import SupportSection from "./SupportSection";
 
 interface DoctorData {
   id: number;
@@ -47,7 +47,7 @@ export default function SettingsPage() {
     { id: "profile", label: "Profile", icon: User },
     { id: "security", label: "Security", icon: Lock },
     { id: "subscription", label: "Subscription", icon: Crown },
-    { id: "payment", label: "Payment", icon: CreditCard },
+    { id: "support", label: "Support", icon: Headphones },
   ];
 
   const renderTabContent = () => {
@@ -58,8 +58,8 @@ export default function SettingsPage() {
         return <SecuritySection />;
       case "subscription":
         return <SubscriptionSection />;
-      case "payment":
-        return <PaymentSection formData={formData} setFormData={setFormData} />;
+      case "support":
+        return <SupportSection />;
       default:
         return null;
     }
@@ -101,13 +101,8 @@ export default function SettingsPage() {
         </div>
 
         {/* Tab Content */}
-        <div className="p-6">
-          {renderTabContent()}
-        </div>
+        <div className="p-6">{renderTabContent()}</div>
       </div>
-
-    
-     
     </div>
   );
 }
