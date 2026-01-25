@@ -117,18 +117,28 @@ export default function RegisterPage() {
         throw new Error(data.message || "Registration failed. Please try again.");
       }
 
-      if (data.requiresVerification) {
-        // Show OTP modal
-        setShowOtpModal(true);
-        setResendCooldown(60); // 60 seconds cooldown
-        setOtp(["", "", "", "", "", ""]);
-        setOtpError("");
-        setOtpSuccess(data.message || "Verification code sent to your email");
-      } else {
-        // Direct registration success (shouldn't happen with new flow)
-        setSuccess("Account created successfully! Redirecting to login...");
-        setTimeout(() => router.push("/login"), 2000);
-      }
+      // ============================================================
+      // TEMPORARILY DISABLED FOR TESTING - OTP VERIFICATION
+      // ============================================================
+      // if (data.requiresVerification) {
+      //   // Show OTP modal
+      //   setShowOtpModal(true);
+      //   setResendCooldown(60); // 60 seconds cooldown
+      //   setOtp(["", "", "", "", "", ""]);
+      //   setOtpError("");
+      //   setOtpSuccess(data.message || "Verification code sent to your email");
+      // } else {
+      //   // Direct registration success (shouldn't happen with new flow)
+      //   setSuccess("Account created successfully! Redirecting to login...");
+      //   setTimeout(() => router.push("/login"), 2000);
+      // }
+
+      // TODO: Re-enable OTP verification after testing
+      // TEMPORARY: Skip OTP verification and go directly to success
+      setSuccess("Account created successfully! Redirecting to login...");
+      setTimeout(() => router.push("/login"), 2000);
+      // ============================================================
+
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -474,7 +484,7 @@ export default function RegisterPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Sending verification code...
+                  Creating account...
                 </span>
               ) : (
                 "Create Account"
@@ -594,7 +604,7 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* OTP Verification Modal */}
+      {/* OTP Verification Modal - TEMPORARILY DISABLED BUT KEPT FOR REFERENCE */}
       {showOtpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
