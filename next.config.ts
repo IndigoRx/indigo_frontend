@@ -22,7 +22,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: https: blob:",
-              "connect-src 'self' https://api.indigorx.me http://147.93.114.66:9090 https://api.stripe.com https://cloudflareinsights.com",
+              "connect-src 'self' https://api.indigorx.me http://147.93.114.66:9090 http://localhost:9090 https://api.stripe.com https://cloudflareinsights.com",
               "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
               "frame-ancestors 'none'",
               "form-action 'self'",
