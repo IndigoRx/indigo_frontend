@@ -98,7 +98,7 @@ export default function CompleteProfilePage() {
             }
 
             // Success - redirect to dashboard
-           router.push("/subscription");
+           router.push("/dashboard");
 
         } catch (err: any) {
             console.error("Error completing profile:", err);

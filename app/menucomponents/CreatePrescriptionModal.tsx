@@ -124,9 +124,6 @@ export default function CreatePrescriptionModal({
   // Quick Add Patient Modal state
   const [showAddPatientModal, setShowAddPatientModal] = useState(false);
 
-  // Subscription expired modal state
-  const [showSubscriptionExpired, setShowSubscriptionExpired] = useState(false);
-
   // Flag to prevent double execution
   const [isAddingMedication, setIsAddingMedication] = useState(false);
 
@@ -374,16 +371,6 @@ export default function CreatePrescriptionModal({
         body: JSON.stringify(prescriptionData),
       });
 
-      // Handle subscription expired
-      if (response.status === 402) {
-        const errorData = await response.json();
-        if (errorData.requiresSubscription) {
-          setShowSubscriptionExpired(true);
-          setCreatingPrescription(false);
-          return;
-        }
-      }
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to create prescription");
@@ -424,7 +411,6 @@ export default function CreatePrescriptionModal({
     setShowDrugDropdown(false);
     setHasSearched(false);
     setIsAddingMedication(false);
-    setShowSubscriptionExpired(false);
     onClose();
   };
 
@@ -925,36 +911,6 @@ export default function CreatePrescriptionModal({
         onSuccess={handleAddPatientSuccess}
       />
 
-      {/* Subscription Expired Modal */}
-      {showSubscriptionExpired && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 text-center">
-            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircle size={32} className="text-amber-600" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Subscription Required
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Your free trial has expired. Please subscribe to continue creating prescriptions.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowSubscriptionExpired(false)}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-              >
-                Later
-              </button>
-              <button
-                onClick={() => (window.location.href = "/subscription")}
-                className="flex-1 px-4 py-2.5 bg-[#166534] text-white rounded-lg font-medium hover:bg-[#14532D] transition-colors"
-              >
-                Subscribe Now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 

@@ -1,10 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { User, Lock, Crown, Headphones, Save } from "lucide-react";
+import { User, Lock, Headphones, Save } from "lucide-react";
 import ProfileSection from "./Profilesection";
 import SecuritySection from "./Securitysection";
-import SubscriptionSection from "./Subscriptionsection";
 import SupportSection from "./SupportSection";
 
 interface DoctorData {
@@ -46,7 +45,6 @@ export default function SettingsPage() {
   const tabs = [
     { id: "profile", label: "Profile", icon: User },
     { id: "security", label: "Security", icon: Lock },
-    { id: "subscription", label: "Subscription", icon: Crown },
     { id: "support", label: "Support", icon: Headphones },
   ];
 
@@ -56,8 +54,6 @@ export default function SettingsPage() {
         return <ProfileSection formData={formData} setFormData={setFormData} />;
       case "security":
         return <SecuritySection />;
-      case "subscription":
-        return <SubscriptionSection />;
       case "support":
         return <SupportSection />;
       default:

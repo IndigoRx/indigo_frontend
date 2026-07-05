@@ -163,7 +163,6 @@ export default function SupportSection() {
                 >
                   <option value="">Select a category</option>
                   <option value="technical">Technical Issue</option>
-                  <option value="billing">Billing & Subscription</option>
                   <option value="account">Account Management</option>
                   <option value="feature">Feature Request</option>
                   <option value="other">Other</option>
