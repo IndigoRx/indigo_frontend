@@ -116,7 +116,9 @@ export default function CreatePrescriptionModal({
   // API state
   const [patients, setPatients] = useState<Patient[]>([]);
   const [drugs, setDrugs] = useState<Drug[]>([]);
+  const [drugCache, setDrugCache] = useState<Record<number, Drug>>({});
   const [patientsLoading, setPatientsLoading] = useState(false);
+  const [drugsLoading, setDrugsLoading] = useState(false);
   const [creatingPrescription, setCreatingPrescription] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -192,32 +194,57 @@ export default function CreatePrescriptionModal({
     }
   }, [isOpen, preselectedPatient]);
 
-  // Fetch drugs on mount
+  // Debounced drug search as the user types
   useEffect(() => {
-    if (isOpen) {
-      fetchDrugs();
-    }
-  }, [isOpen]);
+    if (!isOpen) return;
 
-  const fetchDrugs = async () => {
+    const query = drugSearchQuery.trim();
+    if (!query) {
+      setDrugs([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      searchDrugs(query);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [isOpen, drugSearchQuery]);
+
+  const searchDrugs = async (query: string) => {
+    setDrugsLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_ENDPOINTS.DRUGS}?page=0&size=100`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `${API_ENDPOINTS.DRUGS_SEARCH}?query=${encodeURIComponent(query)}&page=0&size=20`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch drugs");
+        throw new Error("Failed to search drugs");
       }
 
       const data = await response.json();
-      setDrugs(data.data || data.drugs || []);
+      const results: Drug[] = data.data || [];
+      setDrugs(results);
+      setDrugCache((prev) => {
+        const next = { ...prev };
+        results.forEach((drug) => { next[drug.id] = drug; });
+        return next;
+      });
     } catch (err: any) {
-      console.error("Error fetching drugs:", err);
-      setDrugs(mockDrugs);
+      console.error("Error searching drugs:", err);
+      setDrugs(mockDrugs.filter((drug) =>
+        drug.name.toLowerCase().includes(query.toLowerCase()) ||
+        drug.genericName.toLowerCase().includes(query.toLowerCase())
+      ));
+    } finally {
+      setDrugsLoading(false);
     }
   };
 
@@ -302,6 +329,7 @@ export default function CreatePrescriptionModal({
     setShowDrugDropdown(false);
     setSelectedDrug(drug);
     setDrugSearchQuery(drug.name);
+    setDrugCache((prev) => ({ ...prev, [drug.id]: drug }));
     if (drug.commonDosages && drug.commonDosages.length > 0) {
       setDosage(drug.commonDosages[0]);
     }
@@ -413,14 +441,6 @@ export default function CreatePrescriptionModal({
     setIsAddingMedication(false);
     onClose();
   };
-
-  const filteredDrugs = drugs.filter(
-    (drug) =>
-      drugSearchQuery.trim() !== "" &&
-      (drug.name.toLowerCase().includes(drugSearchQuery.toLowerCase()) ||
-        drug.genericName.toLowerCase().includes(drugSearchQuery.toLowerCase()) ||
-        drug.category.toLowerCase().includes(drugSearchQuery.toLowerCase()))
-  );
 
   // Don't render if not open or not mounted (for SSR compatibility)
   if (!isOpen || !mounted) return null;
@@ -664,10 +684,14 @@ export default function CreatePrescriptionModal({
                       placeholder="Type to search medications..."
                     />
 
+                    {drugsLoading && (
+                      <Loader2 size={18} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-gray-400" />
+                    )}
+
                     {/* Drug Dropdown */}
-                    {showDrugDropdown && !selectedDrug && filteredDrugs.length > 0 && (
+                    {showDrugDropdown && !selectedDrug && !drugsLoading && drugs.length > 0 && (
                       <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {filteredDrugs.map((drug) => (
+                        {drugs.map((drug) => (
                           <div
                             key={drug.id}
                             role="button"
@@ -822,7 +846,7 @@ export default function CreatePrescriptionModal({
                   </h4>
                   <div className="space-y-2 max-h-60 overflow-y-auto">
                     {addedMedications.map((med, index) => {
-                      const drug = drugs.find(d => d.id === med.drugId);
+                      const drug = drugCache[med.drugId];
                       return (
                         <div
                           key={index}

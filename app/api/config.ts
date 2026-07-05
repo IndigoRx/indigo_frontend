@@ -1,5 +1,5 @@
-//export const API_BASE_URL = "https://api.indigorx.me";
-export const API_BASE_URL = "http://localhost:9090";
+export const API_BASE_URL = "https://api.indigorx.me";
+//export const API_BASE_URL = "http://localhost:9090";
 
 export const API_ENDPOINTS = {
   BASE_URL: API_BASE_URL,
@@ -62,8 +62,12 @@ export const API_ENDPOINTS = {
 
   // Drug endpoints
   DRUGS: `${API_BASE_URL}/api/drugs`,
+  ADD_DRUG: `${API_BASE_URL}/api/drugs`,
   DRUG_BY_ID: (id: number) => `${API_BASE_URL}/api/drugs/${id}`,
   DRUGS_SEARCH: `${API_BASE_URL}/api/drugs/search`,
-  DRUGS_BY_CATEGORY: (category: string) => 
+  DRUGS_BY_CATEGORY: (category: string) =>
     `${API_BASE_URL}/api/drugs/category/${encodeURIComponent(category)}`,
+  DRUGS_CATEGORIES: `${API_BASE_URL}/api/drugs/categories/list`,
+  DRUGS_ACTIVE: `${API_BASE_URL}/api/drugs/active`,
+  DRUGS_STATS: `${API_BASE_URL}/api/drugs/stats`,
 };

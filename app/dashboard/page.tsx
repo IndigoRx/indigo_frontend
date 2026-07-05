@@ -13,11 +13,13 @@ import {
   Search,
   AlertCircle,
   Activity,
+  Pill,
 } from "lucide-react";
 import { API_ENDPOINTS } from "@/app/api/config";
 import DashboardOverview from "../menucomponents/DashboardOverview";
 import PatientsPage from "../menucomponents/PatientsPage";
 import PrescriptionsPage from "../menucomponents/PrescriptionsPage";
+import DrugsPage from "../menucomponents/DrugsPage";
 import SettingsPage from "../menucomponents/SettingsPage";
 
 interface DoctorData {
@@ -161,6 +163,7 @@ export default function DashboardPage() {
     { id: "dashboard", label: "Dashboard", icon: Activity },
     { id: "patients", label: "Patients", icon: Users },
     { id: "prescriptions", label: "Prescriptions", icon: FileText },
+    { id: "drugs", label: "Drugs", icon: Pill },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -254,6 +257,8 @@ export default function DashboardPage() {
         return <PatientsPage />;
       case "prescriptions":
         return <PrescriptionsPage />;
+      case "drugs":
+        return <DrugsPage />;
       case "settings":
         return <SettingsPage />;
       default:
