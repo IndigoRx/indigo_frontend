@@ -80,7 +80,7 @@ interface Patient {
 interface CreatePrescriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (prescriptionId: number) => void;
   preselectedPatient?: Patient | null;
 }
 
@@ -404,8 +404,10 @@ export default function CreatePrescriptionModal({
         throw new Error(errorData.error || "Failed to create prescription");
       }
 
+      const createdPrescription = await response.json();
+
       resetModal();
-      onSuccess?.();
+      onSuccess?.(createdPrescription.id ?? createdPrescription.data?.id);
     } catch (err: any) {
       console.error("Error creating prescription:", err);
       setError(err.message || "Failed to create prescription");

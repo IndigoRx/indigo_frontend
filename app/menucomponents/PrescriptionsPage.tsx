@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   FileText,
   Search,
@@ -13,6 +14,9 @@ import {
   X,
   Loader2,
   AlertCircle,
+  CheckCircle2,
+  Share2,
+  ExternalLink,
 } from "lucide-react";
 import { API_ENDPOINTS } from "@/app/api/config";
 import CreatePrescriptionModal from "@/app/menucomponents/CreatePrescriptionModal";
@@ -98,11 +102,43 @@ export default function PrescriptionsPage() {
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [createdPrescription, setCreatedPrescription] = useState<Prescription | null>(null);
 
   // Pagination state
   const [prescriptionPage, setPrescriptionPage] = useState(0);
   const [prescriptionTotalPages, setPrescriptionTotalPages] = useState(0);
   const [totalPrescriptions, setTotalPrescriptions] = useState(0);
+
+  // Fetch the signed prescription PDF blob from the backend
+  const fetchPrescriptionPdf = async (prescriptionId: number, patientName: string) => {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(API_ENDPOINTS.PRESCRIPTION_DOWNLOAD(prescriptionId), {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to download prescription");
+    }
+
+    const blob = await response.blob();
+
+    const contentDisposition = response.headers.get("Content-Disposition");
+    let filename = `prescription_${prescriptionId}_${patientName.replace(/\s+/g, "_")}.pdf`;
+
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1];
+      }
+    }
+
+    return { blob, filename };
+  };
 
   // Download signed prescription PDF from backend
   const downloadPrescriptionPDF = async (prescription: Prescription) => {
@@ -110,44 +146,18 @@ export default function PrescriptionsPage() {
     setError(null);
 
     try {
-      const token = localStorage.getItem("token");
+      const { blob, filename } = await fetchPrescriptionPdf(
+        prescription.id,
+        prescription.patientName
+      );
 
-      const response = await fetch(API_ENDPOINTS.PRESCRIPTION_DOWNLOAD(prescription.id), {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to download prescription");
-      }
-
-      // Get the blob from response
-      const blob = await response.blob();
-
-      // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-
-      // Get filename from Content-Disposition header or generate one
-      const contentDisposition = response.headers.get("Content-Disposition");
-      let filename = `prescription_${prescription.id}_${prescription.patientName.replace(/\s+/g, "_")}.pdf`;
-
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1];
-        }
-      }
-
       link.download = filename;
       document.body.appendChild(link);
       link.click();
 
-      // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
@@ -155,6 +165,48 @@ export default function PrescriptionsPage() {
       setError(err.message || "Failed to download prescription PDF");
     } finally {
       setDownloadingId(null);
+    }
+  };
+
+  // Open the signed prescription PDF in a new tab
+  const openPrescriptionPDF = async (prescriptionId: number, patientName: string) => {
+    try {
+      const { blob } = await fetchPrescriptionPdf(prescriptionId, patientName);
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (err: any) {
+      console.error("Error opening prescription:", err);
+      setError(err.message || "Failed to open prescription PDF");
+    }
+  };
+
+  // Share the signed prescription PDF using the Web Share API, falling back to download
+  const sharePrescriptionPDF = async (prescriptionId: number, patientName: string) => {
+    try {
+      const { blob, filename } = await fetchPrescriptionPdf(prescriptionId, patientName);
+      const file = new File([blob], filename, { type: "application/pdf" });
+
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: "Prescription",
+          text: `Prescription for ${patientName}`,
+        });
+      } else {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (err: any) {
+      if (err?.name !== "AbortError") {
+        console.error("Error sharing prescription:", err);
+        setError(err.message || "Failed to share prescription PDF");
+      }
     }
   };
 
@@ -205,9 +257,12 @@ export default function PrescriptionsPage() {
       setPrescriptionTotalPages(data.totalPages);
       setPrescriptionPage(data.currentPage);
       setTotalPrescriptions(data.totalElements);
+
+      return transformedPrescriptions;
     } catch (err: any) {
       console.error("Error fetching prescriptions:", err);
       setError(err.message || "Failed to load prescriptions");
+      return [];
     } finally {
       setPrescriptionsLoading(false);
     }
@@ -225,10 +280,13 @@ export default function PrescriptionsPage() {
       )
   );
 
-  const handlePrescriptionCreated = () => {
+  const handlePrescriptionCreated = async (prescriptionId?: number) => {
     setShowCreateModal(false);
-    fetchPrescriptions();
-    alert("Prescription created successfully!");
+    const updatedPrescriptions = await fetchPrescriptions();
+
+    const newPrescription =
+      updatedPrescriptions?.find((p) => p.id === prescriptionId) ?? null;
+    setCreatedPrescription(newPrescription);
   };
 
   const getStatusColor = (status: string) => {
@@ -501,6 +559,60 @@ export default function PrescriptionsPage() {
         onClose={() => setShowCreateModal(false)}
         onSuccess={handlePrescriptionCreated}
       />
+
+      {/* Prescription Created Success Modal */}
+      {createdPrescription &&
+        createPortal(
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[10001] p-4">
+            <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+              <button
+                onClick={() => setCreatedPrescription(null)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle2 size={28} className="text-[#166534]" />
+              </div>
+
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                Prescription Created
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Prescription for {createdPrescription.patientName} is ready.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() =>
+                    sharePrescriptionPDF(
+                      createdPrescription.id,
+                      createdPrescription.patientName
+                    )
+                  }
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                >
+                  <Share2 size={16} />
+                  Share
+                </button>
+                <button
+                  onClick={() =>
+                    openPrescriptionPDF(
+                      createdPrescription.id,
+                      createdPrescription.patientName
+                    )
+                  }
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#166534] text-white rounded-lg font-medium hover:bg-[#14532D] transition-colors"
+                >
+                  <ExternalLink size={16} />
+                  Open
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
