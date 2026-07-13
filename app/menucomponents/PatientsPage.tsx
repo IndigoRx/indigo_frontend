@@ -7,7 +7,6 @@ import {
   Plus,
   Phone,
   Mail,
-  Calendar,
   ChevronRight,
   UserCircle,
   ChevronLeft,
@@ -189,17 +188,6 @@ export default function PatientsPage() {
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
     setCurrentPage(0);
-  };
-
-  const calculateAge = (dateOfBirth: string) => {
-    const dob = new Date(dateOfBirth);
-    const today = new Date();
-    let age = today.getFullYear() - dob.getFullYear();
-    const monthDiff = today.getMonth() - dob.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-      age--;
-    }
-    return age;
   };
 
   const handleAddPatientSuccess = () => {
@@ -399,16 +387,8 @@ export default function PatientsPage() {
                     <td className="px-6 py-4">
                       <div className="space-y-1">
                         <p className="text-sm text-gray-900">
-                          {calculateAge(patient.dateOfBirth)} years •{" "}
-                          {patient.gender}
+                          {patient.age} years • {patient.gender}
                         </p>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <Calendar size={12} />
-                          <span>
-                            DOB:{" "}
-                            {new Date(patient.dateOfBirth).toLocaleDateString()}
-                          </span>
-                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">

@@ -60,6 +60,10 @@ export const API_ENDPOINTS = {
   PRESCRIPTION_DOWNLOAD: (id: number) => `${API_BASE_URL}/api/prescriptions/${id}/download`,
 
 
+  // Article endpoints
+  ARTICLES: `${API_BASE_URL}/api/articles`,
+  ARTICLE_BY_ID: (id: number) => `${API_BASE_URL}/api/articles/${id}`,
+
   // Drug endpoints
   DRUGS: `${API_BASE_URL}/api/drugs`,
   ADD_DRUG: `${API_BASE_URL}/api/drugs`,

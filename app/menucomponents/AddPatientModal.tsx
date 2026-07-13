@@ -7,6 +7,8 @@ import { API_ENDPOINTS } from "@/app/api/config";
 
 interface AddPatientForm {
   name: string;
+  age: string;
+  ageUnit: "Years" | "Months";
   dateOfBirth: string;
   gender: string;
   phone: string;
@@ -35,6 +37,8 @@ export default function AddPatientModal({
 
   const [formData, setFormData] = useState<AddPatientForm>({
     name: "",
+    age: "",
+    ageUnit: "Years",
     dateOfBirth: "",
     gender: "",
     phone: "",
@@ -96,6 +100,8 @@ export default function AddPatientModal({
   const resetForm = () => {
     setFormData({
       name: "",
+      age: "",
+      ageUnit: "Years",
       dateOfBirth: "",
       gender: "",
       phone: "",
@@ -118,13 +124,13 @@ export default function AddPatientModal({
     e.preventDefault();
 
     // Validation
-    if (
-      !formData.name ||
-      !formData.dateOfBirth ||
-      !formData.gender ||
-      !formData.phone
-    ) {
+    if (!formData.name || !formData.gender || !formData.phone) {
       setAddError("Please fill in all required fields");
+      return;
+    }
+
+    if (!formData.age && !formData.dateOfBirth) {
+      setAddError("Please enter either an age or a date of birth");
       return;
     }
 
@@ -151,9 +157,8 @@ export default function AddPatientModal({
         return;
       }
 
-      const payload = {
+      const payload: Record<string, string | number> = {
         name: formData.name,
-        dateOfBirth: formData.dateOfBirth,
         gender: formData.gender,
         phone: formData.phone,
         email: formData.email,
@@ -162,6 +167,18 @@ export default function AddPatientModal({
         medicalHistory: formData.medicalHistory || "",
         allergies: formData.allergies || "",
       };
+
+      if (formData.dateOfBirth) {
+        // Explicit DOB always takes priority; age is computed by the backend.
+        payload.dateOfBirth = formData.dateOfBirth;
+      } else if (formData.ageUnit === "Months") {
+        // Backend only accepts a whole-year age, so express infant ages as a DOB.
+        const dob = new Date();
+        dob.setMonth(dob.getMonth() - Number(formData.age));
+        payload.dateOfBirth = dob.toISOString().split("T")[0];
+      } else {
+        payload.age = Number(formData.age);
+      }
 
       console.log("📤 POST Request to:", API_ENDPOINTS.ADD_PATIENT);
       console.log("📦 Payload:", JSON.stringify(payload, null, 2));
@@ -242,16 +259,48 @@ export default function AddPatientModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date of Birth <span className="text-red-500">*</span>
+                  Age <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    name="age"
+                    min={0}
+                    value={formData.age}
+                    onChange={handleInputChange}
+                    disabled={!!formData.dateOfBirth}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400 bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                    placeholder="e.g. 45"
+                  />
+                  <select
+                    name="ageUnit"
+                    value={formData.ageUnit}
+                    onChange={handleInputChange}
+                    disabled={!!formData.dateOfBirth}
+                    className="px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    <option value="Years">Years</option>
+                    <option value="Months">Months</option>
+                  </select>
+                </div>
+                <p className="mt-1 text-xs text-gray-400">
+                  Use "Months" for infants under a year old.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date of Birth
                 </label>
                 <input
                   type="date"
                   name="dateOfBirth"
                   value={formData.dateOfBirth}
                   onChange={handleInputChange}
-                  required
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 bg-white"
                 />
+                <p className="mt-1 text-xs text-gray-400">
+                  Optional — overrides age if provided.
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
