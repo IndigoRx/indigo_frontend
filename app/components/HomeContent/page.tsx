@@ -1,14 +1,7 @@
 "use client";
-import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Roboto } from "next/font/google";
 import Navbar from "../Navbar/page";
-
-
-const roboto = Roboto({
-  weight: ["400", "500"],
-  subsets: ["latin"],
-});
 
 export default function HomeContent() {
   const [isVisible, setIsVisible] = useState(false);
@@ -54,7 +47,7 @@ export default function HomeContent() {
           >
             <div className="inline-block mb-4">
               <span className="text-sm md:text-base font-medium text-gray-600 bg-green-50 px-4 py-2 rounded-full border border-green-100">
-                Download now
+                Get started
               </span>
             </div>
 
@@ -86,39 +79,19 @@ export default function HomeContent() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
-              <button
-                className="group flex items-center bg-black text-white rounded-xl px-6 py-3 hover:bg-gray-800 transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
-                style={{
-                  fontFamily:
-                    "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif",
-                }}
+              <Link
+                href="/login"
+                className="bg-black text-white rounded-xl px-8 py-3 font-semibold hover:bg-gray-800 transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
               >
-                <img
-                  src="/images/logo/appstore.png"
-                  alt="App Store"
-                  className="mr-3 w-7 h-auto transition-transform group-hover:scale-110"
-                />
-                <div className="flex flex-col items-start leading-tight text-left">
-                  <span className="text-[10px] opacity-90">Download on the</span>
-                  <span className="text-sm font-semibold">App Store</span>
-                </div>
-              </button>
+                Login
+              </Link>
 
-              <button
-                className={`group flex items-center bg-black text-white rounded-xl px-6 py-3 hover:bg-gray-800 transition-all duration-300 transform hover:scale-105 hover:shadow-xl ${roboto.className}`}
+              <Link
+                href="/register"
+                className="bg-white text-gray-900 border border-gray-300 rounded-xl px-8 py-3 font-semibold hover:bg-gray-50 transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
               >
-                <Image
-                  src="/images/logo/playstore.png"
-                  alt="Google Play"
-                  width={28}
-                  height={28}
-                  className="mr-3 transition-transform group-hover:scale-110"
-                />
-                <div className="flex flex-col items-start leading-tight text-left">
-                  <span className="text-[10px] opacity-90">Get it on</span>
-                  <span className="text-sm font-semibold">Google Play</span>
-                </div>
-              </button>
+                Sign Up
+              </Link>
             </div>
           </div>
         </div>

@@ -67,22 +67,22 @@ export default function Footer() {
             <h3 className="text-white font-semibold text-lg mb-4">Product</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="#" className="text-sm hover:text-green-400 transition-colors duration-300">
+                <Link href="/features" className="text-sm hover:text-green-400 transition-colors duration-300">
                   Features
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm hover:text-green-400 transition-colors duration-300">
+                <Link href="/pricing" className="text-sm hover:text-green-400 transition-colors duration-300">
                   Pricing
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm hover:text-green-400 transition-colors duration-300">
+                <Link href="/updates" className="text-sm hover:text-green-400 transition-colors duration-300">
                   Updates
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm hover:text-green-400 transition-colors duration-300">
+                <Link href="/beta-program" className="text-sm hover:text-green-400 transition-colors duration-300">
                   Beta Program
                 </Link>
               </li>
@@ -94,22 +94,22 @@ export default function Footer() {
             <h3 className="text-white font-semibold text-lg mb-4">Company</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="#" className="text-sm hover:text-green-400 transition-colors duration-300">
+                <Link href="/about" className="text-sm hover:text-green-400 transition-colors duration-300">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm hover:text-green-400 transition-colors duration-300">
+                <Link href="/careers" className="text-sm hover:text-green-400 transition-colors duration-300">
                   Careers
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm hover:text-green-400 transition-colors duration-300">
+                <Link href="/blog" className="text-sm hover:text-green-400 transition-colors duration-300">
                   Blog
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm hover:text-green-400 transition-colors duration-300">
+                <Link href="/contact" className="text-sm hover:text-green-400 transition-colors duration-300">
                   Contact
                 </Link>
               </li>
@@ -121,22 +121,22 @@ export default function Footer() {
             <h3 className="text-white font-semibold text-lg mb-4">Support</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="#" className="text-sm hover:text-green-400 transition-colors duration-300">
+                <Link href="/help-center" className="text-sm hover:text-green-400 transition-colors duration-300">
                   Help Center
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm hover:text-green-400 transition-colors duration-300">
+                <Link href="/documentation" className="text-sm hover:text-green-400 transition-colors duration-300">
                   Documentation
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm hover:text-green-400 transition-colors duration-300">
+                <Link href="/community" className="text-sm hover:text-green-400 transition-colors duration-300">
                   Community
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm hover:text-green-400 transition-colors duration-300">
+                <Link href="/status" className="text-sm hover:text-green-400 transition-colors duration-300">
                   Status
                 </Link>
               </li>
@@ -156,13 +156,13 @@ export default function Footer() {
 
             {/* Legal Links */}
             <div className="flex space-x-6">
-              <Link href="#" className="text-sm text-gray-400 hover:text-green-400 transition-colors duration-300">
+              <Link href="/privacy-policy" className="text-sm text-gray-400 hover:text-green-400 transition-colors duration-300">
                 Privacy Policy
               </Link>
-              <Link href="#" className="text-sm text-gray-400 hover:text-green-400 transition-colors duration-300">
+              <Link href="/terms-of-service" className="text-sm text-gray-400 hover:text-green-400 transition-colors duration-300">
                 Terms of Service
               </Link>
-              <Link href="#" className="text-sm text-gray-400 hover:text-green-400 transition-colors duration-300">
+              <Link href="/cookie-policy" className="text-sm text-gray-400 hover:text-green-400 transition-colors duration-300">
                 Cookie Policy
               </Link>
             </div>
