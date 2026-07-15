@@ -6,8 +6,13 @@ import GreenButton from "../SubComponents/GreenButton";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem("token"));
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -58,8 +63,14 @@ export default function Navbar() {
 
             {/* Desktop Auth Buttons */}
             <div className="hidden md:flex items-center space-x-3">
-              <WhiteButton href="/login" buttonName="Login" />
-              <GreenButton href="/register" buttonName="Sign up" />
+              {isLoggedIn ? (
+                <GreenButton href="/dashboard" buttonName="Go to Dashboard" />
+              ) : (
+                <>
+                  <WhiteButton href="/login" buttonName="Login" />
+                  <GreenButton href="/register" buttonName="Sign up" />
+                </>
+              )}
             </div>
 
             {/* Mobile Menu Toggle */}
@@ -124,18 +135,29 @@ export default function Navbar() {
           ))}
 
           <div className="pt-4 border-t border-gray-200 mt-4 space-y-2">
-            <a
-              href="/login"
-              className="block w-full px-4 py-2 rounded-md text-center bg-white border border-green-600 text-green-600 font-medium hover:bg-green-50 transition-colors"
-            >
-              Login
-            </a>
-            <a
-              href="/register"
-              className="block w-full px-4 py-2 rounded-md text-center bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
-            >
-              Sign Up
-            </a>
+            {isLoggedIn ? (
+              <a
+                href="/dashboard"
+                className="block w-full px-4 py-2 rounded-md text-center bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
+              >
+                Go to Dashboard
+              </a>
+            ) : (
+              <>
+                <a
+                  href="/login"
+                  className="block w-full px-4 py-2 rounded-md text-center bg-white border border-green-600 text-green-600 font-medium hover:bg-green-50 transition-colors"
+                >
+                  Login
+                </a>
+                <a
+                  href="/register"
+                  className="block w-full px-4 py-2 rounded-md text-center bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
+                >
+                  Sign Up
+                </a>
+              </>
+            )}
           </div>
         </div>
       </div>

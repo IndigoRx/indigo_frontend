@@ -22,7 +22,7 @@ interface AddPatientForm {
 interface AddPatientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (createdPatient?: any) => void;
 }
 
 export default function AddPatientModal({
@@ -168,16 +168,29 @@ export default function AddPatientModal({
         allergies: formData.allergies || "",
       };
 
+      // Computed locally so we can show an age immediately, since the
+      // backend may not echo age/dateOfBirth back on the create response.
+      let displayAge: number | undefined;
+
       if (formData.dateOfBirth) {
         // Explicit DOB always takes priority; age is computed by the backend.
         payload.dateOfBirth = formData.dateOfBirth;
+        const dob = new Date(formData.dateOfBirth);
+        const today = new Date();
+        displayAge = today.getFullYear() - dob.getFullYear();
+        const monthDiff = today.getMonth() - dob.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+          displayAge--;
+        }
       } else if (formData.ageUnit === "Months") {
         // Backend only accepts a whole-year age, so express infant ages as a DOB.
         const dob = new Date();
         dob.setMonth(dob.getMonth() - Number(formData.age));
         payload.dateOfBirth = dob.toISOString().split("T")[0];
+        displayAge = 0;
       } else {
         payload.age = Number(formData.age);
+        displayAge = Number(formData.age);
       }
 
       console.log("📤 POST Request to:", API_ENDPOINTS.ADD_PATIENT);
@@ -205,9 +218,24 @@ export default function AddPatientModal({
       const responseData = await response.json();
       console.log("✅ Success Response:", responseData);
 
+      // The created patient is nested under "patient"; fall back to what we
+      // just submitted for any field it happens not to include.
+      const created = responseData?.patient ?? responseData ?? {};
+      const createdPatient = {
+        id: created.id,
+        name: created.name || formData.name,
+        age: created.age ?? displayAge,
+        gender: created.gender || formData.gender,
+        phone: created.phone || created.contactNumber || formData.phone,
+        email: created.email || formData.email,
+        bloodGroup: created.bloodGroup || formData.bloodGroup,
+        allergies: created.allergies || formData.allergies,
+        medicalHistory: created.medicalHistory || formData.medicalHistory,
+      };
+
       // Success - reset form and notify parent
       resetForm();
-      onSuccess();
+      onSuccess(createdPatient);
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Failed to add patient");
       console.error("❌ Error adding patient:", err);

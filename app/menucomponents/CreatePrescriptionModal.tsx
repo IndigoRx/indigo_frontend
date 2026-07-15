@@ -80,7 +80,7 @@ interface Patient {
 interface CreatePrescriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: (prescriptionId: number) => void;
+  onSuccess?: (prescriptionId: number, patientName: string) => void;
   preselectedPatient?: Patient | null;
 }
 
@@ -107,7 +107,8 @@ export default function CreatePrescriptionModal({
   const [showDrugDropdown, setShowDrugDropdown] = useState(false);
   const [dosage, setDosage] = useState("");
   const [frequency, setFrequency] = useState("Once daily");
-  const [duration, setDuration] = useState("");
+  const [durationValue, setDurationValue] = useState("");
+  const [durationUnit, setDurationUnit] = useState("Days");
   const [diagnosis, setDiagnosis] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [instructions, setInstructions] = useState("");
@@ -339,16 +340,19 @@ export default function CreatePrescriptionModal({
     if (isAddingMedication) {
       return;
     }
-    
-    if (!selectedDrug || !dosage || !frequency || !duration) return;
+
+    if (!selectedDrug || !dosage || !frequency || !durationValue) return;
 
     setIsAddingMedication(true);
+
+    const unitLabel =
+      Number(durationValue) === 1 ? durationUnit.replace(/s$/, "") : durationUnit;
 
     const newMedication: PrescriptionMedicationDTO = {
       drugId: selectedDrug.id,
       dosage,
       frequency,
-      duration,
+      duration: `${durationValue} ${unitLabel.toLowerCase()}`,
       instructions: instructions || undefined,
     };
 
@@ -358,7 +362,8 @@ export default function CreatePrescriptionModal({
     setDrugSearchQuery("");
     setDosage("");
     setFrequency("Once daily");
-    setDuration("");
+    setDurationValue("");
+    setDurationUnit("Days");
     setInstructions("");
     
     setTimeout(() => {
@@ -405,9 +410,10 @@ export default function CreatePrescriptionModal({
       }
 
       const createdPrescription = await response.json();
+      const patientName = selectedPatient.name;
 
       resetModal();
-      onSuccess?.(createdPrescription.id ?? createdPrescription.data?.id);
+      onSuccess?.(createdPrescription.id ?? createdPrescription.data?.id, patientName);
     } catch (err: any) {
       console.error("Error creating prescription:", err);
       setError(err.message || "Failed to create prescription");
@@ -416,8 +422,31 @@ export default function CreatePrescriptionModal({
     }
   };
 
-  const handleAddPatientSuccess = () => {
+  const handleAddPatientSuccess = (createdPatient?: any) => {
     setShowAddPatientModal(false);
+
+    if (createdPatient) {
+      const patient: Patient = {
+        id: createdPatient.id,
+        name:
+          createdPatient.name ||
+          `${createdPatient.firstName ?? ""} ${createdPatient.lastName ?? ""}`.trim(),
+        age: createdPatient.age,
+        phone: createdPatient.phone || createdPatient.contactNumber,
+        lastVisit: new Date().toISOString().split("T")[0],
+        email: createdPatient.email,
+        bloodGroup: createdPatient.bloodGroup,
+        allergies: createdPatient.allergies,
+        medicalHistory: createdPatient.medicalHistory,
+      };
+
+      setSelectedPatient(patient);
+      setPatientSearchQuery(patient.name);
+      setShowPatientDropdown(false);
+      setHasSearched(false);
+      return;
+    }
+
     if (patientSearchQuery.trim()) {
       fetchPatients(0, patientSearchQuery);
     }
@@ -430,7 +459,8 @@ export default function CreatePrescriptionModal({
     setSelectedDrug(null);
     setDosage("");
     setFrequency("Once daily");
-    setDuration("");
+    setDurationValue("");
+    setDurationUnit("Days");
     setDiagnosis("");
     setSpecialInstructions("");
     setInstructions("");
@@ -803,13 +833,26 @@ export default function CreatePrescriptionModal({
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Duration *
                     </label>
-                    <input
-                      type="text"
-                      value={duration}
-                      onChange={(e) => setDuration(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400"
-                      placeholder="e.g., 7 days, 30 days, 3 months"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        value={durationValue}
+                        onChange={(e) => setDurationValue(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400"
+                        placeholder="e.g., 7"
+                      />
+                      <select
+                        value={durationUnit}
+                        onChange={(e) => setDurationUnit(e.target.value)}
+                        className="px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 bg-white"
+                      >
+                        <option value="Days">Days</option>
+                        <option value="Weeks">Weeks</option>
+                        <option value="Months">Months</option>
+                        <option value="Years">Years</option>
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -830,7 +873,7 @@ export default function CreatePrescriptionModal({
                   <button
                     type="button"
                     onClick={handleAddMedication}
-                    disabled={!selectedDrug || !dosage || !frequency || !duration}
+                    disabled={!selectedDrug || !dosage || !frequency || !durationValue}
                     className="w-full px-4 py-2.5 bg-[#166534] text-white rounded-lg font-medium hover:bg-[#14532D] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     <Plus size={18} strokeWidth={2} />

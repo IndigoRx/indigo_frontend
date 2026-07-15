@@ -6,10 +6,12 @@ import Navbar from "../Navbar/page";
 export default function HomeContent() {
   const [isVisible, setIsVisible] = useState(false);
   const [cardsVisible, setCardsVisible] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
     const timer = setTimeout(() => setCardsVisible(true), 300);
+    setIsLoggedIn(!!localStorage.getItem("token"));
     return () => clearTimeout(timer);
   }, []);
 
@@ -79,19 +81,30 @@ export default function HomeContent() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
-              <Link
-                href="/login"
-                className="bg-black text-white rounded-xl px-8 py-3 font-semibold hover:bg-gray-800 transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
-              >
-                Login
-              </Link>
+              {isLoggedIn ? (
+                <Link
+                  href="/dashboard"
+                  className="bg-black text-white rounded-xl px-8 py-3 font-semibold hover:bg-gray-800 transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
+                >
+                  Go to Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="bg-black text-white rounded-xl px-8 py-3 font-semibold hover:bg-gray-800 transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
+                  >
+                    Login
+                  </Link>
 
-              <Link
-                href="/register"
-                className="bg-white text-gray-900 border border-gray-300 rounded-xl px-8 py-3 font-semibold hover:bg-gray-50 transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
-              >
-                Sign Up
-              </Link>
+                  <Link
+                    href="/register"
+                    className="bg-white text-gray-900 border border-gray-300 rounded-xl px-8 py-3 font-semibold hover:bg-gray-50 transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
+                  >
+                    Sign Up
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

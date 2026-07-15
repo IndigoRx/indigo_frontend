@@ -11,9 +11,12 @@ import {
   Activity,
   ChevronRight,
   RefreshCw,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { API_ENDPOINTS } from "@/app/api/config";
-import CreatePrescriptionModal from "@/app/menucomponents/CreatePrescriptionModal";
+import CreatePrescriptionFlow from "@/app/menucomponents/CreatePrescriptionFlow";
+import { fetchPrescriptionPdf } from "@/app/menucomponents/prescriptionPdf";
 
 interface DashboardStats {
   totalPatients: number;
@@ -45,9 +48,9 @@ interface RecentPrescription {
   medicationCount: number;
 }
 
-interface PatientTrend {
-  month: string;
-  year: number;
+interface PatientsPerDay {
+  date: string;
+  day: string;
   count: number;
 }
 
@@ -60,7 +63,7 @@ interface DashboardData {
   stats: DashboardStats;
   recentPatients: RecentPatient[];
   recentPrescriptions: RecentPrescription[];
-  patientTrend: PatientTrend[];
+  patientsPerDay: PatientsPerDay[];
 }
 
 // Animated counter component
@@ -117,6 +120,7 @@ export default function DashboardOverview() {
   const [refreshing, setRefreshing] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -178,17 +182,28 @@ export default function DashboardOverview() {
     });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status?.toUpperCase()) {
-      case "ACTIVE":
-      case "COMPLETED":
-        return "bg-green-100 text-green-700";
-      case "PENDING":
-        return "bg-yellow-100 text-yellow-700";
-      case "CANCELLED":
-        return "bg-red-100 text-red-700";
-      default:
-        return "bg-gray-100 text-gray-700";
+  const downloadPrescriptionPDF = async (prescription: RecentPrescription) => {
+    setDownloadingId(prescription.id);
+
+    try {
+      const { blob, filename } = await fetchPrescriptionPdf(
+        prescription.id,
+        prescription.patientName
+      );
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Error downloading prescription:", err);
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -226,8 +241,12 @@ export default function DashboardOverview() {
     return null;
   }
 
-  const { stats, recentPatients, recentPrescriptions, patientTrend } = dashboardData;
-  const maxTrendCount = Math.max(...patientTrend.map((t) => t.count), 1);
+  const {
+    stats,
+    recentPatients = [],
+    recentPrescriptions = [],
+    patientsPerDay = [],
+  } = dashboardData;
 
   return (
     <>
@@ -485,46 +504,150 @@ export default function DashboardOverview() {
 
         {/* Charts and Lists Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Patient Trend Chart */}
+          {/* Patients Per Day Chart */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 animate-fadeInUp stagger-5 hover-lift">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Patient Growth</h3>
-              <span className="text-sm text-gray-500 px-3 py-1 bg-gray-50 rounded-full">Last 6 months</span>
-            </div>
-            <div className="space-y-3">
-              {patientTrend.map((trend, index) => (
-                <div 
-                  key={index} 
-                  className="flex items-center gap-4 group"
-                  style={{ animationDelay: `${0.7 + index * 0.1}s` }}
-                >
-                  <div className="w-12 text-sm text-gray-600 font-medium transition-colors group-hover:text-[#166534]">
-                    {trend.month}
-                  </div>
-                  <div className="flex-1 h-8 bg-gray-100 rounded-lg overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-[#166534] to-[#22c55e] rounded-lg transition-all duration-700 ease-out relative overflow-hidden"
-                      style={{
-                        width: mounted ? `${(trend.count / maxTrendCount) * 100}%` : '0%',
-                        minWidth: trend.count > 0 ? "20px" : "0",
-                        transitionDelay: `${0.3 + index * 0.1}s`,
-                      }}
-                    >
-                      <div 
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                        style={{
-                          animation: 'shimmer 2s infinite',
-                          backgroundSize: '200% 100%',
-                        }}
-                      />
+            {(() => {
+              const total = patientsPerDay.reduce((sum, d) => sum + d.count, 0);
+              const width = 700;
+              const height = 200;
+              const paddingX = 8;
+              const paddingTop = 16;
+              const paddingBottom = 28;
+              const maxCount = Math.max(...patientsPerDay.map((d) => d.count), 1);
+              const innerWidth = width - paddingX * 2;
+              const innerHeight = height - paddingTop - paddingBottom;
+              const stepX =
+                patientsPerDay.length > 1 ? innerWidth / (patientsPerDay.length - 1) : 0;
+
+              const points = patientsPerDay.map((d, i) => {
+                const x = paddingX + stepX * i;
+                const y =
+                  paddingTop + innerHeight - (d.count / maxCount) * innerHeight;
+                return { x, y, ...d };
+              });
+
+              // Catmull-Rom to Bezier for a gentle, natural curve (no sharp joints)
+              const smoothPath = (pts: typeof points) => {
+                if (pts.length < 2) return "";
+                let d = `M ${pts[0].x} ${pts[0].y}`;
+                for (let i = 0; i < pts.length - 1; i++) {
+                  const p0 = pts[i - 1] ?? pts[i];
+                  const p1 = pts[i];
+                  const p2 = pts[i + 1];
+                  const p3 = pts[i + 2] ?? p2;
+                  const cp1x = p1.x + (p2.x - p0.x) / 6;
+                  const cp1y = p1.y + (p2.y - p0.y) / 6;
+                  const cp2x = p2.x - (p3.x - p1.x) / 6;
+                  const cp2y = p2.y - (p3.y - p1.y) / 6;
+                  d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+                }
+                return d;
+              };
+
+              const linePath = smoothPath(points);
+              const areaPath =
+                points.length > 0
+                  ? `${linePath} L ${points[points.length - 1].x} ${
+                      height - paddingBottom
+                    } L ${points[0].x} ${height - paddingBottom} Z`
+                  : "";
+
+              const gridLines = [0.25, 0.5, 0.75].map(
+                (f) => paddingTop + innerHeight * f
+              );
+
+              const lastPoint = points[points.length - 1];
+
+              return (
+                <>
+                  <div className="flex items-baseline justify-between mb-1">
+                    <div>
+                      <p className="text-2xl font-semibold text-gray-900 tabular-nums">
+                        {total}
+                      </p>
+                      <p className="text-sm text-gray-400">
+                        Patients · Last 7 days
+                      </p>
                     </div>
                   </div>
-                  <div className="w-8 text-sm font-semibold text-gray-900 text-right transition-transform group-hover:scale-110">
-                    {trend.count}
-                  </div>
-                </div>
-              ))}
-            </div>
+
+                  <svg
+                    viewBox={`0 0 ${width} ${height}`}
+                    className="w-full h-48 mt-2"
+                    preserveAspectRatio="none"
+                  >
+                    <defs>
+                      <linearGradient id="patientsPerDayFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#166534" stopOpacity="0.12" />
+                        <stop offset="100%" stopColor="#166534" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+
+                    {gridLines.map((y, i) => (
+                      <line
+                        key={i}
+                        x1={paddingX}
+                        x2={width - paddingX}
+                        y1={y}
+                        y2={y}
+                        stroke="#F1F5F9"
+                        strokeWidth={1}
+                      />
+                    ))}
+
+                    {areaPath && (
+                      <path
+                        d={areaPath}
+                        fill="url(#patientsPerDayFill)"
+                        style={{
+                          opacity: mounted ? 1 : 0,
+                          transition: "opacity 0.6s ease-out 0.2s",
+                        }}
+                      />
+                    )}
+
+                    <path
+                      d={linePath}
+                      fill="none"
+                      stroke="#166534"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={{
+                        strokeDasharray: 1000,
+                        strokeDashoffset: mounted ? 0 : 1000,
+                        transition: "stroke-dashoffset 1s ease-out",
+                      }}
+                    />
+
+                    {lastPoint && (
+                      <circle
+                        cx={lastPoint.x}
+                        cy={lastPoint.y}
+                        r={3.5}
+                        fill="#166534"
+                        style={{
+                          opacity: mounted ? 1 : 0,
+                          transition: "opacity 0.4s ease-out 0.9s",
+                        }}
+                      />
+                    )}
+
+                    {points.map((p, i) => (
+                      <text
+                        key={i}
+                        x={p.x}
+                        y={height - 8}
+                        textAnchor="middle"
+                        className="fill-gray-400 text-[11px]"
+                      >
+                        {p.day}
+                      </text>
+                    ))}
+                  </svg>
+                </>
+              );
+            })()}
           </div>
 
           {/* Recent Patients */}
@@ -592,7 +715,7 @@ export default function DashboardOverview() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Diagnosis</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Medications</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Download</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -624,13 +747,21 @@ export default function DashboardOverview() {
                         <p className="text-xs text-gray-400">{formatTime(prescription.createdAt)}</p>
                       </td>
                       <td className="py-3 px-4">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-all duration-300 hover:shadow-sm ${getStatusColor(
-                            prescription.status
-                          )}`}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadPrescriptionPDF(prescription);
+                          }}
+                          disabled={downloadingId === prescription.id}
+                          className="p-1.5 hover:bg-gray-100 rounded transition-colors text-gray-600 hover:text-[#166534] disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Download Signed Prescription PDF"
                         >
-                          {prescription.status}
-                        </span>
+                          {downloadingId === prescription.id ? (
+                            <Loader2 size={18} className="animate-spin" />
+                          ) : (
+                            <Download size={18} strokeWidth={2} />
+                          )}
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -664,14 +795,11 @@ export default function DashboardOverview() {
           </span>
         </button>
 
-        {/* Create Prescription Modal */}
-        <CreatePrescriptionModal
+        {/* Create Prescription Flow (create modal + share/open success modal) */}
+        <CreatePrescriptionFlow
           isOpen={showPrescriptionModal}
           onClose={() => setShowPrescriptionModal(false)}
-          onSuccess={() => {
-            setShowPrescriptionModal(false);
-            fetchDashboardData(true);
-          }}
+          onCreated={() => fetchDashboardData(true)}
         />
       </div>
     </>
