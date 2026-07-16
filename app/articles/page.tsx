@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar/page";
 import Footer from "../components/SubComponents/Footer";
 import { API_ENDPOINTS } from "@/app/api/config";
@@ -33,11 +34,18 @@ interface ArticlesResponse {
 }
 
 export default function ArticlesPage() {
+  const router = useRouter();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
     const fetchArticles = async () => {
       setLoading(true);
       setError(null);
@@ -64,7 +72,7 @@ export default function ArticlesPage() {
     };
 
     fetchArticles();
-  }, []);
+  }, [router]);
 
   return (
     <>

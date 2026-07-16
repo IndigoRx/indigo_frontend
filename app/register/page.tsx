@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Mail, Lock, CheckCircle2, X, RefreshCw } from "lucide-react";
 import { API_ENDPOINTS } from "@/app/api/config";
+import Navbar from "@/app/components/Navbar/page";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -291,7 +292,9 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden">
+    <div className="min-h-screen flex relative overflow-hidden pt-16">
+      <Navbar />
+
       {/* Animated background shapes */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-64 h-64 bg-green-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>

@@ -1,18 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import Navbar from "../../components/Navbar/page";
-import Footer from "../../components/SubComponents/Footer";
+import {
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Undo2,
+  Redo2,
+  Heading1,
+  Heading2,
+  Quote,
+  X,
+  Loader2,
+  type LucideIcon,
+} from "lucide-react";
 import { API_ENDPOINTS } from "@/app/api/config";
 
 export default function NewArticlePage() {
   const router = useRouter();
+  const editorRef = useRef<HTMLDivElement>(null);
+
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
-  const [content, setContent] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState<"PUBLISHED" | "DRAFT" | null>(null);
+
+  const exec = (command: string, value?: string) => {
+    editorRef.current?.focus();
+    document.execCommand(command, false, value);
+  };
 
   const submitArticle = async (status: "PUBLISHED" | "DRAFT") => {
     const token = localStorage.getItem("token");
@@ -22,12 +44,15 @@ export default function NewArticlePage() {
       return;
     }
 
-    if (!title.trim() || !summary.trim() || !content.trim()) {
-      toast.error("Please fill in all fields");
+    const content = editorRef.current?.innerHTML.trim() || "";
+    const plainText = editorRef.current?.innerText.trim() || "";
+
+    if (!title.trim() || !summary.trim() || !plainText) {
+      toast.error("Please fill in the title, summary, and content");
       return;
     }
 
-    setSubmitting(true);
+    setSubmitting(status);
 
     try {
       const response = await fetch(API_ENDPOINTS.ARTICLES, {
@@ -46,7 +71,11 @@ export default function NewArticlePage() {
       }
 
       if (!response.ok) {
-        throw new Error("Failed to create article");
+        const errorData = await response.json().catch(() => ({}));
+        console.error("❌ Server response:", response.status, errorData);
+        throw new Error(
+          errorData.message || errorData.error || "Failed to create article"
+        );
       }
 
       toast.success(
@@ -57,86 +86,146 @@ export default function NewArticlePage() {
       console.error("Error creating article:", err);
       toast.error(err.message || "Failed to create article");
     } finally {
-      setSubmitting(false);
+      setSubmitting(null);
     }
   };
 
+  const toolbarButtons: {
+    icon: LucideIcon;
+    label: string;
+    action: () => void;
+  }[] = [
+    { icon: Bold, label: "Bold", action: () => exec("bold") },
+    { icon: Italic, label: "Italic", action: () => exec("italic") },
+    { icon: Underline, label: "Underline", action: () => exec("underline") },
+    { icon: Heading1, label: "Heading 1", action: () => exec("formatBlock", "H1") },
+    { icon: Heading2, label: "Heading 2", action: () => exec("formatBlock", "H2") },
+    { icon: Quote, label: "Quote", action: () => exec("formatBlock", "BLOCKQUOTE") },
+    { icon: List, label: "Bullet List", action: () => exec("insertUnorderedList") },
+    { icon: ListOrdered, label: "Numbered List", action: () => exec("insertOrderedList") },
+    { icon: AlignLeft, label: "Align Left", action: () => exec("justifyLeft") },
+    { icon: AlignCenter, label: "Align Center", action: () => exec("justifyCenter") },
+    { icon: AlignRight, label: "Align Right", action: () => exec("justifyRight") },
+    { icon: Undo2, label: "Undo", action: () => exec("undo") },
+    { icon: Redo2, label: "Redo", action: () => exec("redo") },
+  ];
+
   return (
-    <>
-      <Navbar />
+    <div className="h-screen flex flex-col bg-gray-100">
+      {/* Top Bar */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-gray-200 shrink-0">
+        <button
+          onClick={() => router.push("/articles")}
+          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+          title="Close"
+        >
+          <X size={20} />
+        </button>
 
-      <div className="min-h-screen bg-gray-50 px-4 py-16 md:py-20">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-8">
-            Add Your Own Article
-          </h1>
-
-          <form
-            className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-5"
-            onSubmit={(e) => e.preventDefault()}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={submitting !== null}
+            onClick={() => submitArticle("DRAFT")}
+            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50 flex items-center gap-2"
           >
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Title
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-600"
-                placeholder="Article title"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Summary
-              </label>
-              <textarea
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
-                rows={3}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-600"
-                placeholder="A short summary of your article"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Content
-              </label>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={10}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-600"
-                placeholder="Write your article here"
-              />
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={() => submitArticle("PUBLISHED")}
-                className="bg-green-700 text-white rounded-xl px-6 py-3 font-semibold hover:bg-green-800 transition disabled:opacity-50"
-              >
-                Publish
-              </button>
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={() => submitArticle("DRAFT")}
-                className="bg-white text-gray-900 border border-gray-300 rounded-xl px-6 py-3 font-semibold hover:bg-gray-50 transition disabled:opacity-50"
-              >
-                Save as Draft
-              </button>
-            </div>
-          </form>
+            {submitting === "DRAFT" && <Loader2 size={14} className="animate-spin" />}
+            Save as Draft
+          </button>
+          <button
+            type="button"
+            disabled={submitting !== null}
+            onClick={() => submitArticle("PUBLISHED")}
+            className="px-4 py-2 rounded-lg bg-green-700 text-white text-sm font-semibold hover:bg-green-800 transition disabled:opacity-50 flex items-center gap-2"
+          >
+            {submitting === "PUBLISHED" && (
+              <Loader2 size={14} className="animate-spin" />
+            )}
+            Publish
+          </button>
         </div>
       </div>
 
-      <Footer />
-    </>
+      {/* Formatting Toolbar */}
+      <div className="flex items-center gap-1 px-4 py-2 bg-white border-b border-gray-200 overflow-x-auto shrink-0">
+        {toolbarButtons.map(({ icon: Icon, label, action }, i) => (
+          <button
+            key={label}
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              action();
+            }}
+            title={label}
+            className="p-2 rounded-md text-gray-600 hover:bg-gray-100 hover:text-green-700 transition-colors"
+          >
+            <Icon size={18} />
+          </button>
+        ))}
+      </div>
+
+      {/* Document Canvas */}
+      <div className="flex-1 overflow-y-auto py-10 px-4">
+        <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200 min-h-full p-10 md:p-16">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Article title"
+            className="w-full text-4xl font-bold text-gray-900 placeholder-gray-300 focus:outline-none mb-4"
+          />
+
+          <input
+            type="text"
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+            placeholder="Add a short summary of your article..."
+            className="w-full text-lg text-gray-500 placeholder-gray-300 focus:outline-none mb-8 pb-6 border-b border-gray-100"
+          />
+
+          <div
+            ref={editorRef}
+            contentEditable
+            suppressContentEditableWarning
+            data-placeholder="Write your article here..."
+            className="editor-content min-h-[50vh] text-gray-800 text-base leading-relaxed focus:outline-none"
+          />
+        </div>
+      </div>
+
+      <style jsx global>{`
+        .editor-content:empty:before {
+          content: attr(data-placeholder);
+          color: #d1d5db;
+        }
+        .editor-content h1 {
+          font-size: 1.875rem;
+          font-weight: 700;
+          margin: 1rem 0 0.5rem;
+        }
+        .editor-content h2 {
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin: 1rem 0 0.5rem;
+        }
+        .editor-content blockquote {
+          border-left: 3px solid #16a34a;
+          padding-left: 1rem;
+          color: #4b5563;
+          font-style: italic;
+          margin: 1rem 0;
+        }
+        .editor-content ul {
+          list-style: disc;
+          padding-left: 1.5rem;
+          margin: 0.5rem 0;
+        }
+        .editor-content ol {
+          list-style: decimal;
+          padding-left: 1.5rem;
+          margin: 0.5rem 0;
+        }
+      `}</style>
+    </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import DOMPurify from "dompurify";
 import Navbar from "../../components/Navbar/page";
 import Footer from "../../components/SubComponents/Footer";
 import { API_ENDPOINTS } from "@/app/api/config";
@@ -90,15 +91,51 @@ export default function ArticleDetailPage() {
 
               <p className="text-gray-600 text-lg mb-6">{article.summary}</p>
 
-              <div className="text-gray-800 whitespace-pre-wrap leading-relaxed">
-                {article.content}
-              </div>
+              <div
+                className="article-content text-gray-800 leading-relaxed"
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(article.content),
+                }}
+              />
             </article>
           )}
         </div>
       </div>
 
       <Footer />
+
+      <style jsx global>{`
+        .article-content h1 {
+          font-size: 1.875rem;
+          font-weight: 700;
+          margin: 1.5rem 0 0.75rem;
+        }
+        .article-content h2 {
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin: 1.25rem 0 0.5rem;
+        }
+        .article-content blockquote {
+          border-left: 3px solid #16a34a;
+          padding-left: 1rem;
+          color: #4b5563;
+          font-style: italic;
+          margin: 1rem 0;
+        }
+        .article-content ul {
+          list-style: disc;
+          padding-left: 1.5rem;
+          margin: 0.75rem 0;
+        }
+        .article-content ol {
+          list-style: decimal;
+          padding-left: 1.5rem;
+          margin: 0.75rem 0;
+        }
+        .article-content p {
+          margin: 0.75rem 0;
+        }
+      `}</style>
     </>
   );
 }

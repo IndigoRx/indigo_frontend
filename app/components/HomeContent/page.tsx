@@ -186,9 +186,12 @@ export default function HomeContent() {
               <p className="text-white text-lg mb-4 font-medium">
                 Ready to transform your practice?
               </p>
-              <button className="bg-white text-green-700 px-8 py-3 rounded-full font-semibold hover:bg-green-50 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
+              <Link
+                href={isLoggedIn ? "/dashboard" : "/login"}
+                className="inline-block bg-white text-green-700 px-8 py-3 rounded-full font-semibold hover:bg-green-50 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+              >
                 Get Started Today
-              </button>
+              </Link>
             </div>
           </div>
         </div>
