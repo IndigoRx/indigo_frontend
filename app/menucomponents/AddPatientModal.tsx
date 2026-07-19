@@ -124,7 +124,7 @@ export default function AddPatientModal({
     e.preventDefault();
 
     // Validation
-    if (!formData.name || !formData.gender || !formData.phone) {
+    if (!formData.name || !formData.gender) {
       setAddError("Please fill in all required fields");
       return;
     }
@@ -140,8 +140,8 @@ export default function AddPatientModal({
       return;
     }
 
-    // Phone validation (must be 10 digits)
-    if (formData.phone.length !== 10) {
+    // Phone validation (only if provided, must be 10 digits)
+    if (formData.phone && formData.phone.length !== 10) {
       setAddError("Phone number must be 10 digits");
       return;
     }
@@ -349,7 +349,7 @@ export default function AddPatientModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number <span className="text-red-500">*</span>
+                  Phone Number
                 </label>
                 <input
                   type="tel"
@@ -358,7 +358,6 @@ export default function AddPatientModal({
                   onChange={handleInputChange}
                   inputMode="numeric"
                   maxLength={10}
-                  required
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400 bg-white"
                   placeholder="9876543210"
                 />
@@ -380,7 +379,7 @@ export default function AddPatientModal({
                   className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400 bg-white ${
                     emailError ? "border-red-500" : "border-gray-300"
                   }`}
-                  placeholder="email@example.com (optional)"
+                  placeholder="email@example.com"
                 />
                 {emailError && (
                   <p className="mt-1 text-xs text-red-500">{emailError}</p>

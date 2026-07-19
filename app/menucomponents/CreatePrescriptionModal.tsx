@@ -11,6 +11,7 @@ import {
   Loader2,
   AlertCircle,
   UserPlus,
+  Clock,
 } from "lucide-react";
 import { API_ENDPOINTS } from "@/app/api/config";
 import AddPatientModal from "./AddPatientModal";
@@ -107,6 +108,8 @@ export default function CreatePrescriptionModal({
   const [showDrugDropdown, setShowDrugDropdown] = useState(false);
   const [dosage, setDosage] = useState("");
   const [frequency, setFrequency] = useState("Once daily");
+  const [specificTimes, setSpecificTimes] = useState<string[]>([""]);
+  const [customFrequency, setCustomFrequency] = useState("");
   const [durationValue, setDurationValue] = useState("");
   const [durationUnit, setDurationUnit] = useState("Days");
   const [diagnosis, setDiagnosis] = useState("");
@@ -336,12 +339,35 @@ export default function CreatePrescriptionModal({
     }
   };
 
+  const formatTime = (time: string) => {
+    if (!time) return "";
+    const [hourStr, minuteStr] = time.split(":");
+    const hour = Number(hourStr);
+    const period = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+    return `${displayHour}:${minuteStr} ${period}`;
+  };
+
+  const resolveFrequency = () => {
+    if (frequency === "__specific__") {
+      const times = specificTimes.filter(Boolean);
+      if (times.length === 0) return "";
+      return `At ${times.map(formatTime).join(", ")}`;
+    }
+    if (frequency === "__custom__") {
+      return customFrequency.trim();
+    }
+    return frequency;
+  };
+
   const handleAddMedication = () => {
     if (isAddingMedication) {
       return;
     }
 
-    if (!selectedDrug || !dosage || !frequency || !durationValue) return;
+    const resolvedFrequency = resolveFrequency();
+
+    if (!selectedDrug || !dosage || !resolvedFrequency || !durationValue) return;
 
     setIsAddingMedication(true);
 
@@ -351,7 +377,7 @@ export default function CreatePrescriptionModal({
     const newMedication: PrescriptionMedicationDTO = {
       drugId: selectedDrug.id,
       dosage,
-      frequency,
+      frequency: resolvedFrequency,
       duration: `${durationValue} ${unitLabel.toLowerCase()}`,
       instructions: instructions || undefined,
     };
@@ -362,10 +388,12 @@ export default function CreatePrescriptionModal({
     setDrugSearchQuery("");
     setDosage("");
     setFrequency("Once daily");
+    setSpecificTimes([""]);
+    setCustomFrequency("");
     setDurationValue("");
     setDurationUnit("Days");
     setInstructions("");
-    
+
     setTimeout(() => {
       setIsAddingMedication(false);
     }, 300);
@@ -459,6 +487,8 @@ export default function CreatePrescriptionModal({
     setSelectedDrug(null);
     setDosage("");
     setFrequency("Once daily");
+    setSpecificTimes([""]);
+    setCustomFrequency("");
     setDurationValue("");
     setDurationUnit("Days");
     setDiagnosis("");
@@ -823,7 +853,63 @@ export default function CreatePrescriptionModal({
                       <option>Before meals</option>
                       <option>After meals</option>
                       <option>At bedtime</option>
+                      <option value="__specific__">Specific time(s) of day...</option>
+                      <option value="__custom__">Custom...</option>
                     </select>
+
+                    {frequency === "__specific__" && (
+                      <div className="mt-2 space-y-2">
+                        {specificTimes.map((time, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Clock size={16} className="text-gray-400" />
+                              </div>
+                              <input
+                                type="time"
+                                value={time}
+                                onChange={(e) => {
+                                  const updated = [...specificTimes];
+                                  updated[index] = e.target.value;
+                                  setSpecificTimes(updated);
+                                }}
+                                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900"
+                              />
+                            </div>
+                            {specificTimes.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSpecificTimes(
+                                    specificTimes.filter((_, i) => i !== index)
+                                  )
+                                }
+                                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                              >
+                                <X size={16} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setSpecificTimes([...specificTimes, ""])}
+                          className="text-sm text-[#166534] font-medium hover:text-[#14532D] transition-colors"
+                        >
+                          + Add another time
+                        </button>
+                      </div>
+                    )}
+
+                    {frequency === "__custom__" && (
+                      <input
+                        type="text"
+                        value={customFrequency}
+                        onChange={(e) => setCustomFrequency(e.target.value)}
+                        className="w-full mt-2 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent text-gray-900 placeholder:text-gray-400"
+                        placeholder="e.g., Every other day with breakfast"
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -873,7 +959,7 @@ export default function CreatePrescriptionModal({
                   <button
                     type="button"
                     onClick={handleAddMedication}
-                    disabled={!selectedDrug || !dosage || !frequency || !durationValue}
+                    disabled={!selectedDrug || !dosage || !resolveFrequency() || !durationValue}
                     className="w-full px-4 py-2.5 bg-[#166534] text-white rounded-lg font-medium hover:bg-[#14532D] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     <Plus size={18} strokeWidth={2} />

@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
+import PwaRegister from "./components/PwaRegister";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,6 +17,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "IndigoRx",
   description: "Partner app for Doctors",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "IndigoRx",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#166534",
 };
 
 export default function RootLayout({
@@ -33,6 +43,8 @@ export default function RootLayout({
         suppressHydrationWarning
       >
          {children}
+
+        <PwaRegister />
 
         <Toaster
           position="top-right"
